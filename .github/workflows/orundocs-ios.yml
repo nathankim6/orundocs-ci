@@ -77,6 +77,18 @@ jobs:
           test "$(/usr/libexec/PlistBuddy -c 'Print :CFBundleShortVersionString' "$P")" = "4.0.0"
           test "$(/usr/libexec/PlistBuddy -c 'Print :CFBundleDisplayName' "$P")" = "OrunDocs"
           grep -q "OD_TEST_RT_IN_RELEASE=absent" "$V"
+          python3 - "$APP/public" <<'PYEOF' | tee -a "$V"
+          import sys, os
+          root = sys.argv[1]
+          s = open(os.path.join(root, "auth-gate.js"), encoding="utf-8").read()
+          lit = "\uc633\uc740\uc601\uc5b4 \uae40\uc131\uc9c4T \ubb38\uc11c \uc791\uc5c5 \uacf5\uac04"
+          esc = "".join("\\u%04x" % ord(c) if ord(c) > 127 else c for c in lit)
+          found = lit in s or esc.lower() in s.lower()
+          print("GATE_SUBTITLE_IN_RELEASE=" + ("FOUND" if found else "absent"))
+          css = open(os.path.join(root, "android.css"), encoding="utf-8").read()
+          print("STATUSBAR_BACKDROP_CSS=" + ("present" if "body::before" in css and "safe-area-inset-top" in css else "missing"))
+          PYEOF
+          grep -q "GATE_SUBTITLE_IN_RELEASE=absent" "$V"
           cd "$RUNNER_TEMP/out"
           ditto -c -k --sequesterRsrc --keepParent OrunDocs.xcarchive OrunDocs-4.0.0-unsigned.xcarchive.zip
           shasum -a 256 OrunDocs-4.0.0-unsigned.xcarchive.zip | tee -a "$V"
