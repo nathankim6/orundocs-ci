@@ -1,0 +1,109 @@
+name: desktop-e2e
+
+on:
+  workflow_dispatch:
+    inputs:
+      target:
+        description: "Which OS jobs to run"
+        required: false
+        default: both
+        type: choice
+        options:
+          - both
+          - windows
+          - macos
+
+permissions:
+  contents: read
+
+env:
+  RELEASE_TAG: desktop-test-4.0.0
+
+jobs:
+  windows:
+    if: ${{ inputs.target == 'both' || inputs.target == 'windows' }}
+    runs-on: windows-latest
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          sparse-checkout: ci-desktop
+          sparse-checkout-cone-mode: true
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Download exact installer from pre-release
+        shell: pwsh
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          New-Item -ItemType Directory -Force -Path "$env:RUNNER_TEMP\bin" | Out-Null
+          gh release download $env:RELEASE_TAG -R $env:GITHUB_REPOSITORY -p 'OrunDocs-Setup-4.0.0-x64.exe' -D "$env:RUNNER_TEMP\bin"
+          Get-FileHash "$env:RUNNER_TEMP\bin\OrunDocs-Setup-4.0.0-x64.exe" -Algorithm SHA256 | Format-List
+          Get-ComputerInfo -Property OsName,OsVersion,OsBuildNumber,WindowsVersion | Format-List
+          query user 2>&1; whoami
+      - name: Install playwright-core
+        shell: pwsh
+        working-directory: ci-desktop
+        run: |
+          npm install --no-save --no-audit --no-fund playwright-core
+          node -e "console.log('playwright-core', require('playwright-core/package.json').version)"
+      - name: Install, E2E, uninstall (real setup exe)
+        shell: pwsh
+        env:
+          OD_TEST_REFRESH_TOKEN: ${{ secrets.OD_TEST_REFRESH_TOKEN }}
+        run: node ci-desktop/win-flow.cjs "$env:RUNNER_TEMP\bin\OrunDocs-Setup-4.0.0-x64.exe" "$env:RUNNER_TEMP\evidence-windows"
+      - name: Upload evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: evidence-windows
+          path: ${{ runner.temp }}/evidence-windows
+          retention-days: 2
+          if-no-files-found: warn
+
+  macos:
+    if: ${{ inputs.target == 'both' || inputs.target == 'macos' }}
+    runs-on: macos-15
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          sparse-checkout: ci-desktop
+          sparse-checkout-cone-mode: true
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Download exact notarized ZIP from pre-release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          mkdir -p "$RUNNER_TEMP/bin"
+          gh release download "$RELEASE_TAG" -R "$GITHUB_REPOSITORY" -p 'OrunDocs-4.0.0-mac-arm64-notarized.zip' -D "$RUNNER_TEMP/bin"
+          shasum -a 256 "$RUNNER_TEMP/bin/OrunDocs-4.0.0-mac-arm64-notarized.zip"
+      - name: Install playwright-core
+        working-directory: ci-desktop
+        run: |
+          npm install --no-save --no-audit --no-fund playwright-core
+          node -e "console.log('playwright-core', require('playwright-core/package.json').version)"
+      - name: Verify, install, E2E, build DMG
+        env:
+          OD_TEST_REFRESH_TOKEN: ${{ secrets.OD_TEST_REFRESH_TOKEN }}
+        run: bash ci-desktop/mac-flow.sh "$RUNNER_TEMP/bin/OrunDocs-4.0.0-mac-arm64-notarized.zip" "$RUNNER_TEMP/evidence-macos" "$RUNNER_TEMP/dmg"
+      - name: Upload evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: evidence-macos
+          path: ${{ runner.temp }}/evidence-macos
+          retention-days: 2
+          if-no-files-found: warn
+      - name: Upload unsigned DMG
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: OrunDocs-4.0.0-mac-arm64-dmg
+          path: ${{ runner.temp }}/dmg
+          retention-days: 2
+          compression-level: 0
+          if-no-files-found: warn
