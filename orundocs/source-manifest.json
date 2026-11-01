@@ -3,8 +3,8 @@
   "version": "4.0.0",
   "versionCode": 4000001,
   "package": "com.orundocs.app",
-  "sourceSha256": "02726ffa5213759bd5ea36894613568039088733631a495626a8d4522c6212fa",
-  "sourceBytes": 9180693,
+  "sourceSha256": "1fd325454852b2b9ac95c83ab8764945e121a85406406c53cc283ba51c8c2f75",
+  "sourceBytes": 9180789,
   "files": [
     {
       "path": "LICENSE",
@@ -383,8 +383,8 @@
     },
     {
       "path": "public/android.css",
-      "bytes": 1543,
-      "sha256": "d494e614b4fe2eb27c470f9419d21ea53930b461aa4a6f1299ab278b7d553eed"
+      "bytes": 1805,
+      "sha256": "89d5c1075d926a9e4ee03dd16930b24cfbcdde4fde33985328cecb00b8d5d56e"
     },
     {
       "path": "public/app-icon.png",
@@ -399,7 +399,7 @@
     {
       "path": "public/auth-gate.css",
       "bytes": 3482,
-      "sha256": "89c66f8e35e29a3cd4e55160777e33d76836c5f05933ce7f57ccd100fd055e7c"
+      "sha256": "bb2b8b68ef65faf535e3850be34bc5840b4db3feb51038792b62fc96216c1abc"
     },
     {
       "path": "public/exam-scan.css",
@@ -1508,8 +1508,8 @@
     },
     {
       "path": "src/auth/auth-gate.js",
-      "bytes": 9420,
-      "sha256": "536de5624293123ad653d3fe868d36a312969aa70013406f2aef850e145f09bf"
+      "bytes": 9317,
+      "sha256": "96602c75dc7f3d7d65482ba8433af402e06aef747074849090dc7b21b489cb7b"
     },
     {
       "path": "src/auth/orundocs-auth-core.mjs",
