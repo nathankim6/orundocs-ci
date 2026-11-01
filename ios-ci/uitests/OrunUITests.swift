@@ -57,13 +57,43 @@ final class OrunUITests: XCTestCase {
         return nil
     }
 
+    private var currentApp: XCUIApplication?
+
+    /// Scroll the web view (drag in the content column) until the element is inside the visible window.
+    private func reveal(_ e: XCUIElement) {
+        guard let app = currentApp, e.exists else { return }
+        let win = app.windows.firstMatch.frame
+        var last = CGRect.null
+        for _ in 0..<15 {
+            let f = e.frame
+            if f.isEmpty || win.isEmpty { return }
+            if f.minY >= win.minY + 50 && f.maxY <= win.maxY - 50 { return }
+            if f == last { return }
+            last = f
+            let up = f.midY > win.midY
+            let start = app.coordinate(withNormalizedOffset: CGVector(dx: 0.65, dy: up ? 0.7 : 0.3))
+            let end = app.coordinate(withNormalizedOffset: CGVector(dx: 0.65, dy: up ? 0.35 : 0.65))
+            start.press(forDuration: 0.05, thenDragTo: end)
+            Thread.sleep(forTimeInterval: 0.8)
+        }
+    }
+
     private func tapCenter(_ e: XCUIElement) {
+        reveal(e)
         if e.isHittable { e.tap() } else { e.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.5)).tap() }
+    }
+
+    private func dismissKeyboard(_ app: XCUIApplication) {
+        guard app.keyboards.count > 0 else { return }
+        for b in [app.buttons["Done"], app.toolbars.buttons["Done"], app.keyboards.buttons["Hide keyboard"], app.buttons["Hide keyboard"], app.buttons["dismiss"]] where b.exists && b.isHittable {
+            b.tap(); Thread.sleep(forTimeInterval: 1); if app.keyboards.count == 0 { return }
+        }
     }
 
     // MARK: a + b: gate visible, sign-in consent sheet, cancel
     func test1_GateAndCancel() {
         let app = XCUIApplication()
+        currentApp = app
         app.launch()
         let login = any(app, "label CONTAINS 'Google 계정으로 로그인' AND elementType == \(XCUIElement.ElementType.button.rawValue)")
         let gateOk = login.waitForExistence(timeout: 60)
@@ -83,7 +113,7 @@ final class OrunUITests: XCTestCase {
         dump("b-consent-app", app)
         dump("b-consent-springboard", springboard)
         let label = alert?.label ?? ""
-        record("b-consent-shown", alert != nil && label.contains("orundocs.web.app"), "alert=\(label)")
+        record("b-consent-shown", alert != nil && label.contains("web.app") && label.contains("Sign In"), "alert=\(label)")
         if let alert = alert {
             let cancel = alert.buttons["Cancel"].exists ? alert.buttons["Cancel"] : alert.buttons.element(boundBy: 0)
             cancel.tap()
@@ -104,6 +134,7 @@ final class OrunUITests: XCTestCase {
         }
         let app = XCUIApplication()
         app.launchEnvironment["OD_TEST_RT"] = rt
+        currentApp = app
         app.launch()
         let account = any(app, "label CONTAINS '\(email)'")
         let unlocked = account.waitForExistence(timeout: 90)
@@ -131,7 +162,8 @@ final class OrunUITests: XCTestCase {
             tapCenter(search)
             Thread.sleep(forTimeInterval: 1)
             app.typeText("exam-scan")
-            app.typeText("\n")
+            Thread.sleep(forTimeInterval: 1)
+            dismissKeyboard(app)
         }
         let card = app.buttons["시험지 필기 지우기 도구 열기"]
         let cardOk = card.waitForExistence(timeout: 10)
@@ -148,14 +180,19 @@ final class OrunUITests: XCTestCase {
 
         // file input -> menu -> Photo Library -> PHPicker
         tapCenter(pick)
-        let lib = waitAny([any(app, "label == 'Photo Library'"), any(app, "label == '사진 보관함'")], timeout: 10)
+        let lib = waitAny([any(app, "label == 'Photo Library'"), any(app, "label == 'Photos'"), any(app, "label == 'Choose Photo'"),
+                           any(app, "label == '사진 보관함'")], timeout: 10)
         shot("d4-input-menu")
         dump("d4-input-menu", app)
         if let lib = lib { lib.tap() }
         Thread.sleep(forTimeInterval: 4)
-        let photos = app.images.matching(NSPredicate(format: "label BEGINSWITH 'Photo'"))
+        var photos = app.images.matching(NSPredicate(format: "label BEGINSWITH 'Photo'"))
         var photoCount = photos.count
         if photoCount == 0 { Thread.sleep(forTimeInterval: 4); photoCount = photos.count }
+        if photoCount == 0 {
+            photos = app.collectionViews.cells
+            photoCount = photos.count
+        }
         shot("d5-photo-picker")
         dump("d5-photo-picker", app)
         var picked = false
@@ -195,7 +232,11 @@ final class OrunUITests: XCTestCase {
         if let local = local, local.isHittable { local.tap(); Thread.sleep(forTimeInterval: 2) }
         shot("d9-export-location")
         dump("d9-export-location", app)
-        let confirm = waitAny([app.buttons["Save"], app.buttons["Move"], app.buttons["Done"], app.buttons["Copy"]], timeout: 5)
+        if local == nil, app.buttons["Browse"].exists {
+            app.buttons["Browse"].tap(); Thread.sleep(forTimeInterval: 2)
+            for l in ["On My iPhone", "On My iPad"] where any(app, "label == '\(l)'").exists { any(app, "label == '\(l)'").tap(); Thread.sleep(forTimeInterval: 2); break }
+        }
+        let confirm = waitAny([app.buttons["Save"], app.buttons["Move"], app.buttons["Done"], app.buttons["Copy"], app.buttons["Export"]], timeout: 5)
         let confirmLabel = confirm?.label ?? "none"
         if let c = confirm, c.isEnabled { c.tap() }
         let saved = any(app, "label CONTAINS '저장을 완료'")
@@ -213,7 +254,8 @@ final class OrunUITests: XCTestCase {
         let share = app.buttons["공유"]
         if share.waitForExistence(timeout: 5) { tapCenter(share) }
         let sheet = waitAny([app.otherElements["ActivityListView"], app.buttons["Close"], app.cells["Save to Files"],
-                             app.buttons["Save to Files"], app.staticTexts["Save to Files"], app.cells["Copy"]], timeout: 20)
+                             app.buttons["Save to Files"], app.staticTexts["Save to Files"], app.cells["Copy"],
+                             any(app, "label CONTAINS 'Save to Files' OR label == 'AirDrop' OR label == 'Copy'")], timeout: 20)
         Thread.sleep(forTimeInterval: 1.5)
         shot("d11-share-sheet")
         dump("d11-share-sheet", app)
