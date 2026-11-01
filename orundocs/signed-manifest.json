@@ -2,9 +2,9 @@
   "package": "com.orundocs.app",
   "version": "4.0.0",
   "versionCode": 4000001,
-  "sourceSha256": "02726ffa5213759bd5ea36894613568039088733631a495626a8d4522c6212fa",
-  "buildRun": "https://github.com/nathankim6/orundocs-ci/actions/runs/41319836037",
-  "appSha256": "b5256794f93addd61f3b62837abda61ec90a2366b718203fa4c9a3150277d258",
+  "sourceSha256": "1fd325454852b2b9ac95c83ab8764945e121a85406406c53cc283ba51c8c2f75",
+  "buildRun": "https://github.com/nathankim6/orundocs-ci/actions/runs/41328698087",
+  "appSha256": "65b45c7d689883cfd2eec922c6f23786bcd78e5f36701d0540b6c458fd4f15ac",
   "testSha256": "a774310d04b737ac98d20e2810e9fdabe1f270b14e292be503b3821b5b1c5891",
   "certificateSha256": "fc221da32116e827848f77fe4c04a8b72232cbf0fa484a9cb400998710919d84",
   "signingKeyUploaded": false
