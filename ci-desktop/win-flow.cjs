@@ -8,7 +8,7 @@ const { spawn, spawnSync } = require('node:child_process');
 const { runE2E } = require('./e2e.cjs');
 
 const [setupExe, outDir] = process.argv.slice(2);
-const EXPECT = '6da2752f95116cb690b8c0b881e88cbf45a88a0da1fa33f218e128ad305999f3';
+const EXPECT = 'cd49b295f6b1ba5d9de28e96f1cb45b58a29e37ddc95c5974ca7f72a420cadcb';
 const shots = path.join(outDir, 'shots');
 fs.mkdirSync(shots, { recursive: true });
 const S = { platform: 'windows', setupExe, steps: {}, startedAt: new Date().toISOString() };
@@ -76,8 +76,11 @@ async function doInstall(n, sp) {
   step(n + 'b-installer-complete-dialog', c2.ok && !installError ? 'passed' : 'failed', { installError, seconds: Math.round((Date.now() - t0) / 1000), ...c2, log: undefined }, [c2.shotBefore, c2.shotAfter, c2.shot]);
   if (!c2.ok || installError) { await waitExit(setup, 60000); return installError ? 'install-error' : false; }
   const se = await waitExit(setup, 180000);
-  step(n + 'c-setup-exit', se === 0 ? 'passed' : 'failed', `setup exe exit code=${se} after ${Math.round((Date.now() - t0) / 1000)}s; installed exe present=${fs.existsSync(EXE)}`);
-  return se === 0 && fs.existsSync(EXE) ? true : false;
+  let info = null; try { info = JSON.parse(fs.readFileSync(path.join(TARGET, 'install-info.json'), 'utf8')); } catch {}
+  const integ = ps(INTEGRATION); const files = fs.existsSync(TARGET) ? countFilesSafe(TARGET) : 0;
+  const ok = se === 0 && fs.existsSync(EXE) && info && info.version === '4.0.0' && info.files.length === files - 2 && integ.registry && integ.registry.DisplayVersion === '4.0.0' && Array.isArray(integ.shortcuts) && integ.shortcuts.every(x => x.exists);
+  step(n + 'c-setup-exit-and-installed', ok ? 'passed' : 'failed', { setupExit: se, seconds: Math.round((Date.now() - t0) / 1000), exe: fs.existsSync(EXE), filesOnDisk: files, installInfoFiles: info && info.files.length, registryVersion: integ.registry && integ.registry.DisplayVersion, shortcuts: integ.shortcuts });
+  return ok ? true : false;
 }
 async function doUninstall(n, sp, mode) {
   const target = TARGET, exe = EXE;
@@ -90,7 +93,7 @@ async function doUninstall(n, sp, mode) {
   } else {
     const un0 = (integ.registry && integ.registry.UninstallString) || '';
     const m = un0.match(/^"([^"]+)"\s*(.*)$/);
-    const cwd = path.join(process.env.SystemRoot, 'System32');
+    const cwd = mode === 'uninstallstring-install-dir-cwd' ? target : path.join(process.env.SystemRoot, 'System32');
     how = { mode, uninstallString: un0, cwd };
     un = spawn(m ? m[1] : exe, m ? m[2].split(/\s+/).filter(Boolean) : ['--uninstall'], { stdio: 'ignore', cwd });
   }
@@ -140,8 +143,10 @@ function sanitizePsModulePath() {
 const HASHTEST = target => `$t=Get-Date; $ok=0;$err=0;$e1=$null; foreach($f in @(Get-ChildItem -LiteralPath '${target.replace(/'/g, "''")}' -File | Select-Object -First 5)){ try{ $null=(Get-FileHash -LiteralPath $f.FullName -Algorithm SHA256).Hash; $ok++ }catch{ $err++; if(-not $e1){$e1=$_.Exception.Message} } }; @{ok=$ok;err=$err;firstError=$e1;seconds=[Math]::Round(((Get-Date)-$t).TotalSeconds,1)} | ConvertTo-Json -Compress`;
 
 (async () => {
-  S.psModulePath = sanitizePsModulePath();
-  L('PSModulePath sanitized', S.psModulePath);
+  // This round deliberately KEEPS the pwsh-7-inherited PSModulePath (the environment that broke Get-FileHash in
+  // the previous build) to prove the .NET SHA256 hashing fix. Nothing is sanitized.
+  S.psModulePath = { before: process.env.PSModulePath || '', after: process.env.PSModulePath || '', sanitized: false };
+  L('PSModulePath kept as inherited (not sanitized)', S.psModulePath.before);
   const target = path.join(process.env.LOCALAPPDATA, 'Programs', 'OrunDocs');
   const exe = path.join(target, 'OrunDocs.exe');
   TARGET = target; EXE = exe;
@@ -164,7 +169,9 @@ const HASHTEST = target => `$t=Get-Date; $ok=0;$err=0;$e1=$null; foreach($f in @
     const lnkOk = Array.isArray(integ.shortcuts) && integ.shortcuts.every(s => s.exists && s.target && s.target.toLowerCase() === exe.toLowerCase()) && /--uninstall/.test(integ.shortcuts[2].args || '');
     const regOk = integ.registry && integ.registry.DisplayVersion === '4.0.0' && /--uninstall/.test(integ.registry.UninstallString || '') && (integ.registry.InstallLocation || '').toLowerCase() === target.toLowerCase();
     const filesOk = fs.existsSync(exe) && fs.existsSync(path.join(target, 'resources', 'app', 'desktop', 'main.cjs')) && info && info.version === '4.0.0' && info.files.length === files - 2;
-    step('2-installed-files-shortcuts-registry', filesOk && lnkOk && regOk ? 'passed' : 'failed', { filesOk, lnkOk, regOk, filesOnDisk: files, installInfo: info && { version: info.version, files: info.files.length, byteSize: info.byteSize, installId: info.installId, installedAt: info.installedAt }, registry: integ.registry, shortcuts: integ.shortcuts, pythonExe: fs.existsSync(path.join(target, 'resources', 'runtime', 'python-export', 'python.exe')) });
+    const unLnk = (integ.shortcuts || []).find(x => /제거\.lnk$/.test(x.path || '')) || {};
+    const unLnkWorkdirIsPrograms = (unLnk.workdir || '').replace(/\\+$/, '').toLowerCase() === path.dirname(target).toLowerCase();
+    step('2-installed-files-shortcuts-registry', filesOk && lnkOk && regOk && unLnkWorkdirIsPrograms ? 'passed' : 'failed', { filesOk, lnkOk, regOk, uninstallShortcutWorkdir: unLnk.workdir, unLnkWorkdirIsPrograms, filesOnDisk: files, installInfo: info && { version: info.version, files: info.files.length, byteSize: info.byteSize, installId: info.installId, installedAt: info.installedAt }, registry: integ.registry, shortcuts: integ.shortcuts, pythonExe: fs.existsSync(path.join(target, 'resources', 'runtime', 'python-export', 'python.exe')) });
     save();
 
     // 3. Launch the installed app and run the E2E (native Save dialog driven via UIA)
@@ -180,7 +187,7 @@ const HASHTEST = target => `$t=Get-Date; $ok=0;$err=0;$e1=$null; foreach($f in @
     step('3-e2e-installed-app', e2e.overall === 'passed' ? 'passed' : 'failed', `overall=${e2e.overall}; gracefulExit=${e2e.gracefulExit}; exitCode=${e2e.exitCode}; see e2e-result.json`);
     await wait(3000);
 
-    { const clean = process.env.PSModulePath; process.env.PSModulePath = S.psModulePath.before; S.getFileHashUnderPwshInheritedEnv = ps(HASHTEST(target)); process.env.PSModulePath = clean; S.getFileHashUnderExplorerLikeEnv = ps(HASHTEST(target)); L('Get-FileHash env comparison', { pwshInherited: S.getFileHashUnderPwshInheritedEnv, explorerLike: S.getFileHashUnderExplorerLikeEnv }); }
+    S.getFileHashInThisEnv = ps(HASHTEST(target)); L('Get-FileHash availability in the (unsanitized) environment', S.getFileHashInThisEnv);
     // 3b. Read-only: what the cleanup script's hash-then-delete loop will see (PowerShell 5.1 Get-FileHash vs install-info)
     S.preUninstallHashCheck = ps(`$t=Get-Date; $target='${target.replace(/'/g, "''")}'
 $info=Get-Content -LiteralPath (Join-Path $target 'install-info.json') -Raw | ConvertFrom-Json
@@ -191,18 +198,20 @@ $lock=@(); foreach($f in @('OrunDocs.exe','resources\\app\\desktop\\main.cjs')){
     L('PRE-UNINSTALL HASH CHECK', S.preUninstallHashCheck);
     save();
 
-    // 4a-c. Uninstall #1 from the Start-menu shortcut "OrunDocs 제거" (ShellExecute, shortcut's own working dir)
+    // 4. Uninstall #1 from the Start-menu shortcut "OrunDocs 제거" (ShellExecute; shortcut's own working folder)
     await doUninstall('4', 'w1', 'start-menu-shortcut');
-    // 5. Reinstall, then 6. uninstall #2 via the registered UninstallString (what Settings > Apps runs), neutral cwd
+    // 5. Reinstall (must succeed with no harness cleanup in between)
     S.leftoverBeforeReinstall = fs.existsSync(TARGET) ? listAll(TARGET) : null;
-    let re = await doInstall('5', 'w2');
-    if (re === 'install-error' && S.leftoverBeforeReinstall) {
-      // Record that the leftover folder blocks a reinstall, then (harness) remove the empty folder and retry.
-      S.harnessRemovedLeftoverFolder = S.leftoverBeforeReinstall; fs.rmSync(TARGET, { recursive: true, force: true });
-      re = await doInstall('5r', 'w2r');
-    }
+    const re = await doInstall('5', 'w2');
+    // 6. Uninstall #2 via the registered UninstallString (Settings > Apps), System32 working folder
     if (re === true) await doUninstall('6', 'w3', 'uninstallstring-system32-cwd');
-
+    // 7. Reinstall onto a pre-created EMPTY install folder
+    if (fs.existsSync(TARGET)) { S.step7PreExisting = listAll(TARGET); L('target unexpectedly exists before step 7', S.step7PreExisting); }
+    fs.mkdirSync(TARGET, { recursive: true });
+    S.step7PreCreatedEmptyFolder = { exists: fs.existsSync(TARGET), entries: listAll(TARGET) };
+    const re7 = await doInstall('7', 'w4');
+    // 8. Final cleanup uninstall via UninstallString launched from INSIDE the install folder (old failure mode)
+    if (re7 === true) await doUninstall('8', 'w5', 'uninstallstring-install-dir-cwd');
   } catch (e) { S.fatal = String(e.stack || e); L('FATAL', S.fatal); }
   finally {
     for (const im of ['OrunDocs.exe', path.basename(setupExe)]) { const k = spawnSync('taskkill', ['/IM', im, '/T', '/F'], { encoding: 'utf8' }); if (k.status === 0) L('cleanup: killed leftover', im); }
