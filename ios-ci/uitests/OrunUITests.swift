@@ -235,15 +235,18 @@ final class OrunUITests: XCTestCase {
                 if yearRx.firstMatch(in: l, range: NSRange(l.startIndex..., in: l)) == nil { last = el; break }
             }
             pickedLabel = last.label
-            // PHPicker tiles live in a remote view: tap by coordinate, never scroll the host
-            last.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.5)).tap()
-            picked = true
-            Thread.sleep(forTimeInterval: 1.5)
             let addCandidates = [app.buttons["Add"], app.buttons["추가"], app.buttons["Done"], app.navigationBars.buttons["Add"]]
-            let addEnd = Date().addingTimeInterval(6)
-            addLoop: while Date() < addEnd {
-                for b in addCandidates where b.exists && b.isEnabled { b.tap(); break addLoop }
-                Thread.sleep(forTimeInterval: 0.5)
+            Thread.sleep(forTimeInterval: 2) // let the grid settle before selecting
+            selectLoop: for attempt in 0..<3 {
+                // PHPicker tiles live in a remote view: tap by coordinate, never scroll the host
+                last.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.5)).tap()
+                let addEnd = Date().addingTimeInterval(5)
+                while Date() < addEnd {
+                    for b in addCandidates where b.exists && b.isEnabled { b.tap(); picked = true; break selectLoop }
+                    if !app.buttons["Cancel"].exists && !app.buttons["Done"].exists { picked = true; break selectLoop } // picker closed by itself
+                    Thread.sleep(forTimeInterval: 0.5)
+                }
+                print("ODNOTE: photo selection not confirmed after attempt \(attempt + 1); retrying")
             }
         }
         record("d5-photo-picked", picked, "lib=\(lib != nil) photos=\(photoCount) picked=\(pickedLabel)")
