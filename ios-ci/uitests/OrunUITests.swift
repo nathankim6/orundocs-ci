@@ -64,15 +64,21 @@ final class OrunUITests: XCTestCase {
         guard let app = currentApp, e.exists else { return }
         let win = app.windows.firstMatch.frame
         var last = CGRect.null
-        for _ in 0..<15 {
+        var xs: [CGFloat] = [0.96, 0.6, 0.3]
+        for _ in 0..<20 {
             let f = e.frame
             if f.isEmpty || win.isEmpty { return }
-            if f.minY >= win.minY + 50 && f.maxY <= win.maxY - 50 { return }
-            if f == last { return }
+            if f.minY >= win.minY + 90 && f.maxY <= win.maxY - 60 { return }
+            if f == last {
+                // drag did not scroll (e.g. landed on a gesture-capturing widget): try another column
+                xs.removeFirst()
+                if xs.isEmpty { return }
+            }
             last = f
             let up = f.midY > win.midY
-            let start = app.coordinate(withNormalizedOffset: CGVector(dx: 0.65, dy: up ? 0.7 : 0.3))
-            let end = app.coordinate(withNormalizedOffset: CGVector(dx: 0.65, dy: up ? 0.35 : 0.65))
+            let x = xs[0]
+            let start = app.coordinate(withNormalizedOffset: CGVector(dx: x, dy: up ? 0.7 : 0.35))
+            let end = app.coordinate(withNormalizedOffset: CGVector(dx: x, dy: up ? 0.4 : 0.65))
             start.press(forDuration: 0.05, thenDragTo: end)
             Thread.sleep(forTimeInterval: 0.8)
         }
@@ -80,7 +86,7 @@ final class OrunUITests: XCTestCase {
 
     private func tapCenter(_ e: XCUIElement) {
         reveal(e)
-        if e.isHittable { e.tap() } else { e.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.5)).tap() }
+        if e.isHittable { e.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.5)).tap() } else { e.tap() }
     }
 
     private func dismissKeyboard(_ app: XCUIApplication) {
@@ -198,7 +204,14 @@ final class OrunUITests: XCTestCase {
         var picked = false
         var pickedLabel = ""
         if photoCount > 0 {
-            let last = photos.element(boundBy: photoCount - 1)
+            // newest photo = the fixture added by simctl addmedia (current-year labels carry no year)
+            var last = photos.element(boundBy: 0)
+            let yearRx = try! NSRegularExpression(pattern: "\\b(19|20)\\d\\d\\b")
+            for i in 0..<photoCount {
+                let el = photos.element(boundBy: i)
+                let l = el.label
+                if yearRx.firstMatch(in: l, range: NSRange(l.startIndex..., in: l)) == nil { last = el; break }
+            }
             pickedLabel = last.label
             tapCenter(last)
             picked = true
@@ -217,14 +230,18 @@ final class OrunUITests: XCTestCase {
         let done = any(app, "label CONTAINS '처리 완료'")
         let doneOk = done.waitForExistence(timeout: 240)
         Thread.sleep(forTimeInterval: 1)
+        if doneOk { reveal(done) }
         shot("d7-processed")
+        let canvas = any(app, "label == '필기 지운 결과'")
+        if doneOk && canvas.exists { reveal(canvas); Thread.sleep(forTimeInterval: 0.5); shot("d7b-result") }
         record("d7-processed", doneOk, doneOk ? done.label : "")
         guard doneOk else { dump("d7-processed", app); return }
 
         // Save as PDF -> Files export sheet
         let save = app.buttons["저장"]
         if save.waitForExistence(timeout: 5) { tapCenter(save) }
-        Thread.sleep(forTimeInterval: 4)
+        _ = waitAny([app.buttons["Save"], app.buttons["Move"], app.buttons["Browse"]], timeout: 20)
+        Thread.sleep(forTimeInterval: 2)
         shot("d8-export-sheet")
         dump("d8-export-sheet", app)
         let local = waitAny([any(app, "label == 'On My iPhone'"), any(app, "label == 'On My iPad'"),
@@ -241,6 +258,8 @@ final class OrunUITests: XCTestCase {
         if let c = confirm, c.isEnabled { c.tap() }
         let saved = any(app, "label CONTAINS '저장을 완료'")
         let savedOk = saved.waitForExistence(timeout: 30)
+        Thread.sleep(forTimeInterval: 1.5)
+        if savedOk { reveal(saved) }
         shot("d10-saved")
         if !savedOk { dump("d10-saved", app) }
         record("d8-save-files", savedOk, "location=\(local?.label ?? "none") confirm=\(confirmLabel) status=\(savedOk ? saved.label : "")")
@@ -256,7 +275,11 @@ final class OrunUITests: XCTestCase {
         let sheet = waitAny([app.otherElements["ActivityListView"], app.buttons["Close"], app.cells["Save to Files"],
                              app.buttons["Save to Files"], app.staticTexts["Save to Files"], app.cells["Copy"],
                              any(app, "label CONTAINS 'Save to Files' OR label == 'AirDrop' OR label == 'Copy'")], timeout: 20)
-        Thread.sleep(forTimeInterval: 1.5)
+        if let sheet = sheet {
+            let end = Date().addingTimeInterval(10)
+            while Date() < end && sheet.descendants(matching: .cell).count + sheet.descendants(matching: .button).count == 0 { Thread.sleep(forTimeInterval: 0.5) }
+        }
+        Thread.sleep(forTimeInterval: 3)
         shot("d11-share-sheet")
         dump("d11-share-sheet", app)
         record("d11-share-sheet", sheet != nil, "found=\(sheet?.identifier ?? "") \(sheet?.label ?? "")")
