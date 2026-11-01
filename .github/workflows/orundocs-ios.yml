@@ -1,0 +1,206 @@
+name: orundocs-ios
+
+on:
+  workflow_dispatch:
+    inputs:
+      run_archive:
+        description: "Build unsigned Release xcarchive"
+        type: boolean
+        default: true
+      run_tests:
+        description: "Run simulator UI tests"
+        type: boolean
+        default: true
+
+permissions:
+  contents: read
+
+concurrency:
+  group: orundocs-ios
+  cancel-in-progress: false
+
+jobs:
+  archive:
+    if: ${{ inputs.run_archive }}
+    runs-on: macos-15
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          sparse-checkout: ios-ci
+      - uses: maxim-lobanov/setup-xcode@v1
+        with:
+          xcode-version: latest-stable
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Prepare project (npm ci, web build, cap sync ios)
+        run: |
+          set -euo pipefail
+          xcodebuild -version
+          mkdir -p "$RUNNER_TEMP/od" && tar -xzf ios-ci/src.tar.gz -C "$RUNNER_TEMP/od"
+          cd "$RUNNER_TEMP/od"
+          npm ci --no-audit --no-fund
+          node scripts/build-android.cjs
+          npx cap sync ios
+      - name: Archive Release (unsigned, generic iOS device)
+        working-directory: ${{ runner.temp }}/od/ios/App
+        run: |
+          set -uo pipefail
+          mkdir -p "$RUNNER_TEMP/out"
+          xcodebuild archive -project App.xcodeproj -scheme App -configuration Release \
+            -destination generic/platform=iOS -archivePath "$RUNNER_TEMP/out/OrunDocs.xcarchive" \
+            CODE_SIGNING_ALLOWED=NO CODE_SIGNING_REQUIRED=NO > "$RUNNER_TEMP/out/archive.log" 2>&1
+          rc=$?
+          grep -E "error:|warning:.*(OrunPlugins|SceneDelegate|AppDelegate)" "$RUNNER_TEMP/out/archive.log" | head -80 || true
+          tail -25 "$RUNNER_TEMP/out/archive.log"
+          exit $rc
+      - name: Verify archive
+        run: |
+          set -euo pipefail
+          APP="$RUNNER_TEMP/out/OrunDocs.xcarchive/Products/Applications/App.app"
+          P="$APP/Info.plist"
+          V="$RUNNER_TEMP/out/verify.txt"
+          {
+            for k in CFBundleIdentifier CFBundleShortVersionString CFBundleVersion CFBundleDisplayName NSCameraUsageDescription NSPhotoLibraryUsageDescription MinimumOSVersion; do
+              echo "$k = $(/usr/libexec/PlistBuddy -c "Print :$k" "$P")"
+            done
+            echo "UIDeviceFamily = $(/usr/libexec/PlistBuddy -c 'Print :UIDeviceFamily' "$P" | tr -d '\n ')"
+            echo "public/index.html present: $(test -f "$APP/public/index.html" && echo yes || echo no)"
+            echo "codesign: $(codesign -dv "$APP" 2>&1 | head -1 || true)"
+            if grep -rl "OD_TEST_RT" "$APP" "$RUNNER_TEMP/out/OrunDocs.xcarchive" ; then echo "OD_TEST_RT_IN_RELEASE=FOUND"; else echo "OD_TEST_RT_IN_RELEASE=absent"; fi
+            if grep -rl "installTestSessionHook" "$APP"; then echo "HOOK_SYMBOL_IN_RELEASE=FOUND"; else echo "HOOK_SYMBOL_IN_RELEASE=absent"; fi
+            echo "plugins in binary: $(strings "$APP/App" | grep -E '^(OrunAuth|AtelierSaf|AtelierShare)$' | sort -u | tr '\n' ' ')"
+            ls -la "$APP" | head -40
+          } | tee "$V"
+          test "$(/usr/libexec/PlistBuddy -c 'Print :CFBundleIdentifier' "$P")" = "com.orundocs.app"
+          test "$(/usr/libexec/PlistBuddy -c 'Print :CFBundleShortVersionString' "$P")" = "4.0.0"
+          test "$(/usr/libexec/PlistBuddy -c 'Print :CFBundleDisplayName' "$P")" = "OrunDocs"
+          grep -q "OD_TEST_RT_IN_RELEASE=absent" "$V"
+          cd "$RUNNER_TEMP/out"
+          ditto -c -k --sequesterRsrc --keepParent OrunDocs.xcarchive OrunDocs-4.0.0-unsigned.xcarchive.zip
+          shasum -a 256 OrunDocs-4.0.0-unsigned.xcarchive.zip | tee -a "$V"
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: orundocs-ios-unsigned-xcarchive
+          retention-days: 14
+          path: |
+            ${{ runner.temp }}/out/OrunDocs-4.0.0-unsigned.xcarchive.zip
+            ${{ runner.temp }}/out/verify.txt
+            ${{ runner.temp }}/out/archive.log
+
+  uitest:
+    if: ${{ inputs.run_tests }}
+    runs-on: macos-15
+    timeout-minutes: 90
+    env:
+      TEST_RUNNER_OD_TEST_RT: ${{ secrets.OD_TEST_REFRESH_TOKEN }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          sparse-checkout: ios-ci
+      - uses: maxim-lobanov/setup-xcode@v1
+        with:
+          xcode-version: latest-stable
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Prepare project (npm ci, web build, cap sync ios)
+        run: |
+          set -euo pipefail
+          xcodebuild -version
+          mkdir -p "$RUNNER_TEMP/od" && tar -xzf ios-ci/src.tar.gz -C "$RUNNER_TEMP/od"
+          cd "$RUNNER_TEMP/od"
+          npm ci --no-audit --no-fund
+          node scripts/build-android.cjs
+          npx cap sync ios
+      - name: Add UI test target (CI copy only)
+        working-directory: ${{ runner.temp }}/od/ios/App
+        run: |
+          set -euo pipefail
+          gem list -i xcodeproj >/dev/null || gem install xcodeproj --no-document
+          ruby "$GITHUB_WORKSPACE/ios-ci/add_uitests.rb" App.xcodeproj "$GITHUB_WORKSPACE/ios-ci/uitests/OrunUITests.swift"
+      - name: Build for testing (Debug, simulator)
+        working-directory: ${{ runner.temp }}/od/ios/App
+        run: |
+          set -uo pipefail
+          mkdir -p "$RUNNER_TEMP/out"
+          xcodebuild build-for-testing -project App.xcodeproj -scheme AppUITests -configuration Debug \
+            -destination "generic/platform=iOS Simulator" -derivedDataPath "$RUNNER_TEMP/dd" \
+            CODE_SIGNING_ALLOWED=NO > "$RUNNER_TEMP/out/build-for-testing.log" 2>&1
+          rc=$?
+          grep -E "error:|warning:.*(OrunPlugins|SceneDelegate|OrunUITests)" "$RUNNER_TEMP/out/build-for-testing.log" | head -80 || true
+          tail -25 "$RUNNER_TEMP/out/build-for-testing.log"
+          APP="$RUNNER_TEMP/dd/Build/Products/Debug-iphonesimulator/App.app"
+          if grep -rlq "OD_TEST_RT" "$APP"; then echo "Debug build contains OD_TEST_RT hook (expected)"; else echo "Debug build lacks OD_TEST_RT hook"; fi
+          exit $rc
+      - name: Pick simulators
+        id: sims
+        run: |
+          xcrun simctl list runtimes
+          xcrun simctl list devices available -j | python3 -c '
+          import json,sys,re
+          d=json.load(sys.stdin)["devices"]
+          rts=[k for k in d if "iOS" in k and d[k]]
+          rts.sort(key=lambda k:[int(x) for x in re.findall(r"\d+",k.split("iOS")[-1])])
+          devs=d[rts[-1]]
+          def pick(prefs,kind):
+              for p in prefs:
+                  for x in devs:
+                      if x["name"]==p: return x
+              return next(x for x in devs if x["name"].startswith(kind))
+          a=pick(["iPhone 16","iPhone 17","iPhone 16 Pro","iPhone 17 Pro"],"iPhone")
+          b=pick(["iPad Pro 11-inch (M4)","iPad Air 11-inch (M3)","iPad Air 11-inch (M2)","iPad (A16)"],"iPad")
+          print("iphone="+a["udid"]); print("ipad="+b["udid"])
+          print("names="+a["name"]+" / "+b["name"]+" / "+rts[-1])
+          ' | tee -a "$GITHUB_OUTPUT"
+      - name: UI tests on iPhone and iPad
+        working-directory: ${{ runner.temp }}/od/ios/App
+        run: |
+          set -u
+          if [ -z "${TEST_RUNNER_OD_TEST_RT:-}" ]; then echo "::warning::OD_TEST_REFRESH_TOKEN secret missing"; fi
+          run_dev() {
+            name=$1; udid=$2
+            mkdir -p "$RUNNER_TEMP/out/shots/$name"
+            xcrun simctl boot "$udid" || true
+            xcrun simctl bootstatus "$udid" -b
+            xcrun simctl addmedia "$udid" "$GITHUB_WORKSPACE/ios-ci/fixtures/exam-photo.jpg"
+            xcrun simctl uninstall "$udid" com.orundocs.app || true
+            TEST_RUNNER_OD_SHOTS="$RUNNER_TEMP/out/shots/$name" xcodebuild test-without-building -project App.xcodeproj -scheme AppUITests \
+              -destination "id=$udid" -derivedDataPath "$RUNNER_TEMP/dd" -resultBundlePath "$RUNNER_TEMP/xcresult-$name" \
+              > "$RUNNER_TEMP/out/test-$name.log" 2>&1
+            echo "$name xcodebuild exit=$?"
+            grep -E "ODRESULT|Test Case .*(passed|failed)|error:" "$RUNNER_TEMP/out/test-$name.log" | head -60
+            xcrun simctl io "$udid" screenshot "$RUNNER_TEMP/out/shots/$name/zz-final.png" || true
+            xcrun simctl shutdown "$udid" || true
+          }
+          run_dev iphone "${{ steps.sims.outputs.iphone }}"
+          run_dev ipad "${{ steps.sims.outputs.ipad }}"
+          cat "$RUNNER_TEMP"/out/shots/*/results-*.txt || true
+      - name: Redact secret from evidence files
+        if: always()
+        run: |
+          python3 - <<'EOF'
+          import os
+          tok = os.environ.get("TEST_RUNNER_OD_TEST_RT", "")
+          root = os.path.join(os.environ["RUNNER_TEMP"], "out")
+          n = 0
+          if tok and os.path.isdir(root):
+              for dp, _, fs in os.walk(root):
+                  for f in fs:
+                      p = os.path.join(dp, f)
+                      if f.endswith((".log", ".txt")):
+                          s = open(p, "rb").read()
+                          if tok.encode() in s:
+                              open(p, "wb").write(s.replace(tok.encode(), b"***")); n += 1
+          print("redacted files:", n)
+          EOF
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: orundocs-ios-uitest-evidence
+          retention-days: 14
+          path: |
+            ${{ runner.temp }}/out/shots
+            ${{ runner.temp }}/out/*.log
