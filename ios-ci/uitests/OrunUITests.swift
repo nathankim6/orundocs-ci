@@ -197,10 +197,16 @@ final class OrunUITests: XCTestCase {
         shot("d4-input-menu")
         dump("d4-input-menu", app)
         if let lib = lib { lib.tap() }
-        Thread.sleep(forTimeInterval: 4)
-        var photos = app.images.matching(NSPredicate(format: "label BEGINSWITH 'Photo'"))
-        var photoCount = photos.count
-        if photoCount == 0 { Thread.sleep(forTimeInterval: 4); photoCount = photos.count }
+        // PHPicker can show "Loading..." for a while on a fresh simulator: wait up to 60 s for tiles
+        var photos = app.images.matching(NSPredicate(format: "label BEGINSWITH 'Photo, '"))
+        var photoCount = 0
+        let pickEnd = Date().addingTimeInterval(60)
+        repeat {
+            Thread.sleep(forTimeInterval: 2)
+            photoCount = photos.count
+        } while photoCount == 0 && Date() < pickEnd
+        Thread.sleep(forTimeInterval: 1)
+        photoCount = photos.count
         if photoCount == 0 {
             photos = app.collectionViews.cells
             photoCount = photos.count
