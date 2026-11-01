@@ -86,7 +86,7 @@ final class OrunUITests: XCTestCase {
 
     private func tapCenter(_ e: XCUIElement) {
         reveal(e)
-        if e.isHittable { e.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.5)).tap() } else { e.tap() }
+        if e.isHittable { e.tap() } else { e.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.5)).tap() }
     }
 
     private func dismissKeyboard(_ app: XCUIApplication) {
@@ -110,11 +110,17 @@ final class OrunUITests: XCTestCase {
         record("a-gate-visible", gateOk && msg.exists, "button=\(gateOk) message=\(msg.exists)")
         guard gateOk else { return }
 
-        tapCenter(login)
-        // ASWebAuthenticationSession consent prompt: '"OrunDocs" Wants to Use "orundocs.web.app" to Sign In'
+        // ASWebAuthenticationSession consent prompt: '"OrunDocs" Wants to Use "web.app" to Sign In'
         let sbAlert = springboard.alerts.firstMatch
         let appAlert = app.alerts.firstMatch
-        let alert = waitAny([sbAlert, appAlert], timeout: 20)
+        Thread.sleep(forTimeInterval: 2)
+        var alert: XCUIElement? = nil
+        for attempt in 0..<3 {
+            if login.exists { tapCenter(login) }
+            alert = waitAny([sbAlert, appAlert], timeout: attempt == 2 ? 20 : 10)
+            if alert != nil { break }
+            print("ODNOTE: consent prompt not shown after tap attempt \(attempt + 1); retrying")
+        }
         shot("b-consent")
         dump("b-consent-app", app)
         dump("b-consent-springboard", springboard)
@@ -213,11 +219,16 @@ final class OrunUITests: XCTestCase {
                 if yearRx.firstMatch(in: l, range: NSRange(l.startIndex..., in: l)) == nil { last = el; break }
             }
             pickedLabel = last.label
-            tapCenter(last)
+            // PHPicker tiles live in a remote view: tap by coordinate, never scroll the host
+            last.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.5)).tap()
             picked = true
-            Thread.sleep(forTimeInterval: 1)
-            let add = waitAny([app.buttons["Add"], app.buttons["추가"]], timeout: 5)
-            add?.tap()
+            Thread.sleep(forTimeInterval: 1.5)
+            let addCandidates = [app.buttons["Add"], app.buttons["추가"], app.buttons["Done"], app.navigationBars.buttons["Add"]]
+            let addEnd = Date().addingTimeInterval(6)
+            addLoop: while Date() < addEnd {
+                for b in addCandidates where b.exists && b.isEnabled { b.tap(); break addLoop }
+                Thread.sleep(forTimeInterval: 0.5)
+            }
         }
         record("d5-photo-picked", picked, "lib=\(lib != nil) photos=\(photoCount) picked=\(pickedLabel)")
 
