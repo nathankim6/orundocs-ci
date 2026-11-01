@@ -108,6 +108,8 @@ final class OrunUITests: XCTestCase {
         shot("a-gate")
         dump("a-gate", app)
         record("a-gate-visible", gateOk && msg.exists, "button=\(gateOk) message=\(msg.exists)")
+        let subtitle = any(app, "label CONTAINS '옳은영어 김성진T 문서 작업 공간'")
+        record("a-gate-subtitle-absent", !subtitle.exists, "subtitlePresent=\(subtitle.exists)")
         guard gateOk else { return }
 
         // ASWebAuthenticationSession consent prompt: '"OrunDocs" Wants to Use "web.app" to Sign In'
@@ -166,6 +168,14 @@ final class OrunUITests: XCTestCase {
         let search = any(app, "placeholderValue CONTAINS '도구 이름' OR label == 'PDF 도구 검색'")
         _ = search.waitForExistence(timeout: 10)
         shot("d1-home")
+        // scroll the home page so content passes under the status bar (iOS status-bar backdrop check)
+        for _ in 0..<2 {
+            app.coordinate(withNormalizedOffset: CGVector(dx: 0.96, dy: 0.75))
+                .press(forDuration: 0.05, thenDragTo: app.coordinate(withNormalizedOffset: CGVector(dx: 0.96, dy: 0.3)))
+            Thread.sleep(forTimeInterval: 1)
+        }
+        Thread.sleep(forTimeInterval: 1)
+        shot("d1b-home-scrolled")
         record("d1-home-26-tools", totalOk && n == 26, "label26TOOLS=\(totalOk) cards=\(n)")
         if device == "ipad" && ProcessInfo.processInfo.environment["OD_FULL_IPAD"] == nil { /* iPad: still try the rest */ }
 
