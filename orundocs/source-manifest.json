@@ -1,0 +1,1635 @@
+{
+  "app": "OrunDocs",
+  "version": "4.0.0",
+  "versionCode": 4000001,
+  "package": "com.orundocs.app",
+  "sourceSha256": "f70fe8330460d5d8e46e8958e390319d0f916a7aac91e5ce9064d7dd2b42c309",
+  "sourceBytes": 9180437,
+  "files": [
+    {
+      "path": "LICENSE",
+      "bytes": 1142,
+      "sha256": "f08c9e9e40e0ea92e692e9556d842a1d81de2d652803ebee0a25cfc404be82d4"
+    },
+    {
+      "path": "README.md",
+      "bytes": 1372,
+      "sha256": "ee889ffbaf5da7b19d3ea97f1e7e999717c28d403095cbde885219d0a87696a0"
+    },
+    {
+      "path": "THIRD_PARTY_NOTICES.md",
+      "bytes": 1835,
+      "sha256": "8f8a85985e95ba74a588ea252214d09ccdc1a89cfe5766325bea66cf16daa9e3"
+    },
+    {
+      "path": "android/.gitignore",
+      "bytes": 1824,
+      "sha256": "065e4a92a240fe11a0ea230491ad9dabef143f5fd5a3e6884ad6f0395666a971"
+    },
+    {
+      "path": "android/app/.gitignore",
+      "bytes": 26,
+      "sha256": "99c54e51ee601a60fbde8016b2cbf717483bc2e92773be86c9247d02a7fa6ea4"
+    },
+    {
+      "path": "android/app/build.gradle",
+      "bytes": 2380,
+      "sha256": "01b7bce1d12a718631405324cd7fadd7a144012f827e6a5d644bf34117bf9970"
+    },
+    {
+      "path": "android/app/capacitor.build.gradle",
+      "bytes": 370,
+      "sha256": "7051cadfdbc532197d2cfd4f8a11684d81367f23cf7952e5a208f7b6aa0833e0"
+    },
+    {
+      "path": "android/app/proguard-rules.pro",
+      "bytes": 751,
+      "sha256": "1cf8c57e8f79c250b0af9c1a5a4edad71a5c348a79ab70243b6bae086c150ad2"
+    },
+    {
+      "path": "android/app/src/androidTest/assets/exam-photo.jpg",
+      "bytes": 134170,
+      "sha256": "ee0a0e482fc5dd197bf28da0b21fd6a1e050457689981c7756816999cd04b867"
+    },
+    {
+      "path": "android/app/src/androidTest/assets/smoke-two-pages.pdf",
+      "bytes": 1615,
+      "sha256": "c9e1d012994e936e950dc74d28cbd2576675002d8d8df9b122f35e05431e8cff"
+    },
+    {
+      "path": "android/app/src/androidTest/java/com/pdfatelier/android/ExampleInstrumentedTest.java",
+      "bytes": 770,
+      "sha256": "4a7f68ad3bc50fcc6f2fd1cc53f8d084c4621bf34b10358fa368c69437ea8292"
+    },
+    {
+      "path": "android/app/src/androidTest/java/com/pdfatelier/android/NativeWebViewSmokeTest.java",
+      "bytes": 26811,
+      "sha256": "6cd3a44d1936968fb62bd397351d91b5b3c13b1f38ffb7119bb1111a7529234d"
+    },
+    {
+      "path": "android/app/src/main/AndroidManifest.xml",
+      "bytes": 2092,
+      "sha256": "142f710823fed00100f3e8fdf9d5e612faa1acf3c4e90616acd80eb8bccbbf7d"
+    },
+    {
+      "path": "android/app/src/main/java/com/pdfatelier/android/AtelierSafPlugin.java",
+      "bytes": 11647,
+      "sha256": "c83b43990cd2bcb43c1ef0a35e1ee3c781cdc695ef78318f4ecef6069673cf81"
+    },
+    {
+      "path": "android/app/src/main/java/com/pdfatelier/android/AtelierSharePlugin.java",
+      "bytes": 10266,
+      "sha256": "fdaaf2cb6b231d52b9089d57b063804e62fdf7f48c0e9ad5813f8d2171331148"
+    },
+    {
+      "path": "android/app/src/main/java/com/pdfatelier/android/MainActivity.java",
+      "bytes": 389,
+      "sha256": "88a2fa4046edb634eabef18e84ce8e1301d922d6e9e266d9e4f392ccdbefae06"
+    },
+    {
+      "path": "android/app/src/main/java/com/pdfatelier/android/OrunAuthPlugin.java",
+      "bytes": 3639,
+      "sha256": "7b12e610a4e4b05b39a6f97505f80e3fd97ea0002d5d40ad16696a1b3d250a6b"
+    },
+    {
+      "path": "android/app/src/main/res/drawable-v24/ic_launcher_foreground.xml",
+      "bytes": 1880,
+      "sha256": "a8514094f754b099d3e55ce1d6e0b2de79db418b2eeacb0fc2a6bb0bfadef221"
+    },
+    {
+      "path": "android/app/src/main/res/drawable/ic_launcher_background.xml",
+      "bytes": 5606,
+      "sha256": "718ba51adf166bb55c3e9936bb8199a0148457f7f0191aaa2f37a94f3159d6ec"
+    },
+    {
+      "path": "android/app/src/main/res/drawable/splash.xml",
+      "bytes": 261,
+      "sha256": "76dccebf14a9bb13a58364db72e964b9ce89a12c730234168215f0ae9047a165"
+    },
+    {
+      "path": "android/app/src/main/res/layout/activity_main.xml",
+      "bytes": 535,
+      "sha256": "5d770feb791313b947020cbfc57e5c733c556dac5e9e49261a1190e527073253"
+    },
+    {
+      "path": "android/app/src/main/res/mipmap-anydpi-v26/ic_launcher.xml",
+      "bytes": 265,
+      "sha256": "9c3a7e0a6515c6e1a7ae834a9ae430311ebc3241f7b2e5e7f0460aa690709a7c"
+    },
+    {
+      "path": "android/app/src/main/res/mipmap-anydpi-v26/ic_launcher_round.xml",
+      "bytes": 265,
+      "sha256": "9c3a7e0a6515c6e1a7ae834a9ae430311ebc3241f7b2e5e7f0460aa690709a7c"
+    },
+    {
+      "path": "android/app/src/main/res/mipmap-hdpi/ic_launcher.png",
+      "bytes": 8539,
+      "sha256": "552fd09bafaf15ad7cf6b86202723e446ae2abcf993a65d12fff8bd7bf55b7e0"
+    },
+    {
+      "path": "android/app/src/main/res/mipmap-hdpi/ic_launcher_foreground.png",
+      "bytes": 10060,
+      "sha256": "c1c1c8b7204de51c5c4ead59228143d408f9f7e9b52fb1af7c6b2b57a54ded54"
+    },
+    {
+      "path": "android/app/src/main/res/mipmap-hdpi/ic_launcher_round.png",
+      "bytes": 7843,
+      "sha256": "2a86fc96e2d08a04f6f3cbd304bd60293c929ae969af576d4750c098f6071e45"
+    },
+    {
+      "path": "android/app/src/main/res/mipmap-mdpi/ic_launcher.png",
+      "bytes": 4480,
+      "sha256": "43da10680b748c65f9921effddc136673310d08bf1a095f7110785f2395f2801"
+    },
+    {
+      "path": "android/app/src/main/res/mipmap-mdpi/ic_launcher_foreground.png",
+      "bytes": 5627,
+      "sha256": "913c2859e03f3a7405215da438b86da44c52d1649507fe086835f494a5a44926"
+    },
+    {
+      "path": "android/app/src/main/res/mipmap-mdpi/ic_launcher_round.png",
+      "bytes": 4412,
+      "sha256": "49360f81f972a3d504b973a75d08136186c848d38b920f893085666e658a7fef"
+    },
+    {
+      "path": "android/app/src/main/res/mipmap-xhdpi/ic_launcher.png",
+      "bytes": 14184,
+      "sha256": "05865b2db716f88e3bab4638a4f7788db110c7d56b8815d3eabdf0247375ca51"
+    },
+    {
+      "path": "android/app/src/main/res/mipmap-xhdpi/ic_launcher_foreground.png",
+      "bytes": 16072,
+      "sha256": "ee51f8e12a293a0299ce25875c6ba1d3055ef45532197bf7848be5133656f155"
+    },
+    {
+      "path": "android/app/src/main/res/mipmap-xhdpi/ic_launcher_round.png",
+      "bytes": 12513,
+      "sha256": "8a0be3113f1b2335cad5535296e9da9a574f88d55d6db8c99d853950231e4014"
+    },
+    {
+      "path": "android/app/src/main/res/mipmap-xxhdpi/ic_launcher.png",
+      "bytes": 26402,
+      "sha256": "dae1701465cd873bc88916ec77544d0e4d98e8c3df40f72adb4c192ea4d79749"
+    },
+    {
+      "path": "android/app/src/main/res/mipmap-xxhdpi/ic_launcher_foreground.png",
+      "bytes": 27972,
+      "sha256": "03e7bb47dd021fb0a9a92f4bbe3952e0fa5d053e01e04fae4d84f8c8bd80d4b6"
+    },
+    {
+      "path": "android/app/src/main/res/mipmap-xxhdpi/ic_launcher_round.png",
+      "bytes": 21433,
+      "sha256": "d56faab5f285db9bc82bc64392093ba64fea58d925da24e71cfb1e2605e5d88c"
+    },
+    {
+      "path": "android/app/src/main/res/mipmap-xxxhdpi/ic_launcher.png",
+      "bytes": 43348,
+      "sha256": "43f5fd17e1beeae319680b53b95324a56d64c2bfe00c3b6fe86be60257ec6e41"
+    },
+    {
+      "path": "android/app/src/main/res/mipmap-xxxhdpi/ic_launcher_foreground.png",
+      "bytes": 45144,
+      "sha256": "72a4b81082482e81a80a2a9ae2e02f5ecb1c46e3af8249ae070be76daa2dc4dd"
+    },
+    {
+      "path": "android/app/src/main/res/mipmap-xxxhdpi/ic_launcher_round.png",
+      "bytes": 33721,
+      "sha256": "fe0f95898320de262e15121fe1c219f3c0642ab1cdf3efafa5f94d53a71ca41c"
+    },
+    {
+      "path": "android/app/src/main/res/values/ic_launcher_background.xml",
+      "bytes": 115,
+      "sha256": "a63ef0408ccba5cc1247f1fb2f271ceb27cb3eff7040c4b767ae53138c0c8c11"
+    },
+    {
+      "path": "android/app/src/main/res/values/strings.xml",
+      "bytes": 288,
+      "sha256": "e138046662ccac94097b8e2dee4aa5e794b2f4019f37942b1f4e12e4badbf9bd"
+    },
+    {
+      "path": "android/app/src/main/res/values/styles.xml",
+      "bytes": 823,
+      "sha256": "18ebba36575e9461347ee67361b23caf095f158ee85dbefe1b83a4669ba5bd6c"
+    },
+    {
+      "path": "android/app/src/main/res/xml/config.xml",
+      "bytes": 185,
+      "sha256": "e9dcda493e663c5c4db9e3cb3bd968477a6e90aa8840bcbba40d72ed54b767ce"
+    },
+    {
+      "path": "android/app/src/main/res/xml/data_extraction_rules.xml",
+      "bytes": 620,
+      "sha256": "32ff18d6e5d4c606a5b5e3662c600113e5691fde23f8275897944be0736f9ac5"
+    },
+    {
+      "path": "android/app/src/main/res/xml/file_paths.xml",
+      "bytes": 229,
+      "sha256": "2f199f5c0bf754c94dd60efb40d8beb44051dd3d631c2a111ecfe208eee71131"
+    },
+    {
+      "path": "android/app/src/test/java/com/getcapacitor/myapp/ExampleUnitTest.java",
+      "bytes": 402,
+      "sha256": "d4045ae8fac1f0807e6b24eb34e68409a9a235df9d1a3f896fb8c9a49424363d"
+    },
+    {
+      "path": "android/build.gradle",
+      "bytes": 637,
+      "sha256": "46ade7db7afeb8049ccea59fce83095dca736ceb8c9acd79cc944e988c3357d9"
+    },
+    {
+      "path": "android/capacitor-cordova-android-plugins/build.gradle",
+      "bytes": 1668,
+      "sha256": "28e3fa281f4d1e388bf98abc7f5bb31e672516e385c165c719d201ed54b8236e"
+    },
+    {
+      "path": "android/capacitor-cordova-android-plugins/cordova.variables.gradle",
+      "bytes": 312,
+      "sha256": "b13104b34f7738abceec358ae8226ba5e64855e97babde54a115880e9b9bd47b"
+    },
+    {
+      "path": "android/capacitor-cordova-android-plugins/src/main/AndroidManifest.xml",
+      "bytes": 210,
+      "sha256": "2e3e383475f0e6cb76f0a7b46017a546663fba8e5bd1ef2a537412afac2ee9b5"
+    },
+    {
+      "path": "android/capacitor-cordova-android-plugins/src/main/java/.gitkeep",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": "android/capacitor-cordova-android-plugins/src/main/res/.gitkeep",
+      "bytes": 1,
+      "sha256": "01ba4719c80b6fe911b091a7c05124b64eeece964e09c058ef8f9805daca546b"
+    },
+    {
+      "path": "android/capacitor.settings.gradle",
+      "bytes": 234,
+      "sha256": "26fefa52ae0ec3d0acb8c19f133498333715d612dea217fc92052ebc39792cde"
+    },
+    {
+      "path": "android/gradle.properties",
+      "bytes": 987,
+      "sha256": "3bab15c5b8bc4c2f4b6cf525497d15ad4abca53a460e6dd2eb0f0135817d31e6"
+    },
+    {
+      "path": "android/gradle/wrapper/gradle-wrapper.jar",
+      "bytes": 43764,
+      "sha256": "7d3a4ac4de1c32b59bc6a4eb8ecb8e612ccd0cf1ae1e99f66902da64df296172"
+    },
+    {
+      "path": "android/gradle/wrapper/gradle-wrapper.properties",
+      "bytes": 253,
+      "sha256": "9a479a85aa879bb55284fc16d0de5b81a745c3854f4e2d88c42e7debaf007435"
+    },
+    {
+      "path": "android/gradlew",
+      "bytes": 8733,
+      "sha256": "b187b4c52e749f5760afdd6fadc31b2a98ad35fb249bf0dff03b72650f320409"
+    },
+    {
+      "path": "android/gradlew.bat",
+      "bytes": 2937,
+      "sha256": "1d297e00bd21de3ace22b4d7f2de1f9dfa858883d66bbf7c1ccbecccec8f4f3b"
+    },
+    {
+      "path": "android/settings.gradle",
+      "bytes": 208,
+      "sha256": "6ce098d15ebd69b44c4ecd786bca1bdc366340d2459b2af4d7bb0ab317aa9669"
+    },
+    {
+      "path": "android/variables.gradle",
+      "bytes": 498,
+      "sha256": "ee671dd93182bdbe10da8a4a140e2423ba201765e8d1c04278c9a08efa72149d"
+    },
+    {
+      "path": "capacitor.config.json",
+      "bytes": 381,
+      "sha256": "e3646332a63736e72cbdbec6bfdd446e0b60cab9600a463c745c885cc7c68c08"
+    },
+    {
+      "path": "ci/README-native-tests.md",
+      "bytes": 5041,
+      "sha256": "59db8a234c62fb4dc6c3a4cc982b69de97f7e7109820c99c57b4cd7a098865e3"
+    },
+    {
+      "path": "ci/android-qpdf-ui-smoke.README.md",
+      "bytes": 6365,
+      "sha256": "f248a422ed1d7acdab959f186bbfb49922dc789d9446c7e22a699dff88f03dce"
+    },
+    {
+      "path": "ci/android-qpdf-ui-smoke.cjs",
+      "bytes": 18803,
+      "sha256": "6437cfd5ba8964d91da964a57543b36641adb99ebf96afba8614fb9c778e1214"
+    },
+    {
+      "path": "ci/test-preview-actions.cjs",
+      "bytes": 2512,
+      "sha256": "c7d22639477bcddbd841b8ad68cf41174d91391bce9d95c6ba298592aa7b469c"
+    },
+    {
+      "path": "docs/preview-workspace.md",
+      "bytes": 2221,
+      "sha256": "477352d000c32377ae82a368e2a8f5f8e5e6077a4ffbdc3a64a169e55d4c70bd"
+    },
+    {
+      "path": "frontend-tests/auth-core.test.mjs",
+      "bytes": 5018,
+      "sha256": "3765e220a80f3167b6322ae5cf53c89bbd42595c40d5f0f6d4f65adb9a8f4b73"
+    },
+    {
+      "path": "frontend-tests/build-meta.json",
+      "bytes": 205202,
+      "sha256": "8b5b28b6c7a700b24f52ad479b3493807a2fbcb40289aaed8acc1c05e3084945"
+    },
+    {
+      "path": "frontend-tests/exam-scan.test.mjs",
+      "bytes": 3118,
+      "sha256": "1039f8647ac72055baa2e71a2bbdd7c10f04ea01a6d6ceadb18091fe7ee2f870"
+    },
+    {
+      "path": "frontend-tests/frontend.test.mjs",
+      "bytes": 7079,
+      "sha256": "f4bacf3092f89d5f6c3f2231098ca186777c64afbe409b79d83e2a84ef2a22af"
+    },
+    {
+      "path": "frontend-tests/mime-regression.test.mjs",
+      "bytes": 4331,
+      "sha256": "27a8e73c363930bca73364bb7b9f6b2a5738329d183ef19dd5788c67257c960a"
+    },
+    {
+      "path": "frontend-tests/office-smoke.test.mjs",
+      "bytes": 1021,
+      "sha256": "9929bb675a671dd2793ff6d15b39afbb8602945ec08b5c6d671c3fdf1a44c34d"
+    },
+    {
+      "path": "frontend-tests/pdf-preview-model.test.mjs",
+      "bytes": 3437,
+      "sha256": "7c32c2f5e05cf33cfe0c93713ba618cc4173041409ab9e18e6983f6d1470589c"
+    },
+    {
+      "path": "frontend-tests/webview-compat.test.mjs",
+      "bytes": 642,
+      "sha256": "9ea5d7dd08fc49b6dc6016c406706beb2fb9ac00fd6cbab05db82959279e3d7c"
+    },
+    {
+      "path": "package-lock.json",
+      "bytes": 154204,
+      "sha256": "cedb7e170e663fd5e30247642c00270791e4dee91c82d889e0eef586e19fc70f"
+    },
+    {
+      "path": "package.json",
+      "bytes": 741,
+      "sha256": "9b2150c9b2410393f09f5d57bc2d0a536c224e701648a177c111f9292bd2bab8"
+    },
+    {
+      "path": "public/android.css",
+      "bytes": 1543,
+      "sha256": "d494e614b4fe2eb27c470f9419d21ea53930b461aa4a6f1299ab278b7d553eed"
+    },
+    {
+      "path": "public/app-icon.png",
+      "bytes": 64507,
+      "sha256": "f6059b6230ae416bf2b27440073bc824b5d768355ff21559bf2bd379e5069974"
+    },
+    {
+      "path": "public/app.js",
+      "bytes": 7724,
+      "sha256": "b81548e5a64faac7b136769acf576b722f8aab6495c7bfe7f8b21831f4da159d"
+    },
+    {
+      "path": "public/auth-gate.css",
+      "bytes": 3482,
+      "sha256": "89c66f8e35e29a3cd4e55160777e33d76836c5f05933ce7f57ccd100fd055e7c"
+    },
+    {
+      "path": "public/exam-scan.css",
+      "bytes": 5710,
+      "sha256": "fbc2bd5a76a9f2752c0674268d1f29e9d10346b29ccb40c12f0c6152f2e769fc"
+    },
+    {
+      "path": "public/index.html",
+      "bytes": 6469,
+      "sha256": "b19ead63e2a31eb48513cdb732d0897c95b949e513fa24b82a505ef07011b8c8"
+    },
+    {
+      "path": "public/open-source-notices.txt",
+      "bytes": 421614,
+      "sha256": "7daeeafbd46955d451f05b13118a1a5e4e64c13540e534cf22b917111579b145"
+    },
+    {
+      "path": "public/pdf-ops-worker.js",
+      "bytes": 3060,
+      "sha256": "ce32a7281a2bdb13a2b648a5e66065807f73b1495f9c8ec386818e17c136a392"
+    },
+    {
+      "path": "public/preview-workspace.css",
+      "bytes": 9158,
+      "sha256": "ddbf2167c3187d5f545b94a12f70c0d2068335db2032b3258e14ba442be38de6"
+    },
+    {
+      "path": "public/pro-shell.js",
+      "bytes": 1175,
+      "sha256": "9d371584db603d502b8b950dab60d6ae34d2f595792eac1d367aaec6147126fa"
+    },
+    {
+      "path": "public/pro.css",
+      "bytes": 26582,
+      "sha256": "f2e8cbce68a38225367a2711564b573b211b197b8232982e16598bd53a206a18"
+    },
+    {
+      "path": "public/style.css",
+      "bytes": 12539,
+      "sha256": "064c3b7fce6e70f38d23bad4156020ef02302c5333ce2f5b5c6734d1dc424d99"
+    },
+    {
+      "path": "public/suite.css",
+      "bytes": 14572,
+      "sha256": "eae1903f33c7776ab6abffa474c8e4ec17f8138ddbd12f27fd2794e10188b4fb"
+    },
+    {
+      "path": "public/vendor/LICENSE",
+      "bytes": 11339,
+      "sha256": "7bc8081b7018b0b136347cb0f96b0c697936856f6d3cd6987812cf78828c79d6"
+    },
+    {
+      "path": "public/vendor/fflate-LICENSE",
+      "bytes": 1069,
+      "sha256": "0a1df3a083d0c010560aa342e87959c8c1070e6fd54545741f083f22d0c8b551"
+    },
+    {
+      "path": "public/vendor/fflate.js",
+      "bytes": 33044,
+      "sha256": "462ef8041fc970e3615a20a9dd2b2e3047a073b2da729ef4f02b634bba8b7b83"
+    },
+    {
+      "path": "public/vendor/fonts/OFL.txt",
+      "bytes": 4388,
+      "sha256": "1c05c68c34f9708415aada51f17e1b0092d2cea709bf4a94cd38114f9e73d7d9"
+    },
+    {
+      "path": "public/vendor/fonts/SOURCE.md",
+      "bytes": 951,
+      "sha256": "f46f3cf0c24bef1bdd4f6087aa5276f9dd513be3916b680eef305320eae31f31"
+    },
+    {
+      "path": "public/vendor/fonts/noto-sans-kr.ttf",
+      "bytes": 10414588,
+      "sha256": "194018e6b2b293a7964f037b25c0249ce1418bc9ab3c971060a03aa57861e252"
+    },
+    {
+      "path": "public/vendor/licenses/pdf-lib-LICENSE",
+      "bytes": 1070,
+      "sha256": "f2c9fc00fdb66eb99ac156ba52d734af66d8d309f65753ae809ad34ee2883bcb"
+    },
+    {
+      "path": "public/vendor/licenses/pdfjs-LICENSE",
+      "bytes": 10174,
+      "sha256": "0d542e0c8804e39aa7f37eb00da5a762149dc682d7829451287e11b938e94594"
+    },
+    {
+      "path": "public/vendor/pdfjs/cmaps/78-EUC-H.bcmap",
+      "bytes": 2404,
+      "sha256": "d92a261336dc18b8c03a46eb4d462382d33f4338fa195d303256b2031434c874"
+    },
+    {
+      "path": "public/vendor/pdfjs/cmaps/78-EUC-V.bcmap",
+      "bytes": 173,
+      "sha256": "61670bebc4e4827b67230c054fd0d820d6e30c3584d02e386804e62bbedc032a"
+    },
+    {
+      "path": "public/vendor/pdfjs/cmaps/78-H.bcmap",
+      "bytes": 2379,
+      "sha256": "ece6415b853d61e1b2560165151407d35cf16e6556932b85a13ea75276b77402"
+    },
+    {
+      "path": "public/vendor/pdfjs/cmaps/78-RKSJ-H.bcmap",
+      "bytes": 2398,
+      "sha256": "696b1f973c97623496703809eaaa5f9b40696c77540057413f4b826a08edfa7b"
+    },
+    {
+      "path": "public/vendor/pdfjs/cmaps/78-RKSJ-V.bcmap",
+      "bytes": 173,
+      "sha256": "53cb6d560ab377da48cf65d6dcacb0bdb31f13fab7066c580de38c12a73a7ff9"
+    },
+    {
+      "path": "public/vendor/pdfjs/cmaps/78-V.bcmap",
+      "bytes": 169,
+      "sha256": "289000f02fd34872b6975503217f33abae6bee676e7d28f640473a67c8db1712"
+    },
+    {
+      "path": "public/vendor/pdfjs/cmaps/78ms-RKSJ-H.bcmap",
+      "bytes": 2651,
+      "sha256": "a2442595218f5f8bd8e1b42188e368587d876cfe0cc4cd87196f077c878f72e2"
+    },
+    {
+      "path": "public/vendor/pdfjs/cmaps/78ms-RKSJ-V.bcmap",
+      "bytes": 290,
+      "sha256": "f8ddceba96bfd9d3740bd1789ee30d1f47c78371520a8084f71f7df58f19be0b"
+    },
+    {
+      "path": "public/vendor/pdfjs/cmaps/83pv-RKSJ-H.bcmap",
+      "bytes": 905,
+      "sha256": "44040051ec818fe09b9703472bea72efd2759d5eeb5ff0d77c718d6bb5e6d1df"
+    },
+    {
+      "path": "public/vendor/pdfjs/cmaps/90ms-RKSJ-H.bcmap",
+      "bytes": 721,
+      "sha256": "c13e043e85ff715b75bb03801e8fd0fb8f3a75e4a48496faa6baaf92b5b48ba1"
+    },
+    {
+      "path": "public/vendor/pdfjs/cmaps/90ms-RKSJ-V.bcmap",
+      "bytes": 290,
+      "sha256": "499bb916ce1adbe4289b6e5811f4dc20eb238cdc2ffad20cf26ae56716885bab"
+    },
+    {
+      "path": "public/vendor/pdfjs/cmaps/90msp-RKSJ-H.bcmap",
+      "bytes": 715,
+      "sha256": "7b8b3b8bbf821702e9a4df9f3596ce292380c8c1b0925dedadbb4e4b2d80498b"
+    },
+    {
+      "path": "public/vendor/pdfjs/cmaps/90msp-RKSJ-V.bcmap",
+      "bytes": 291,
+      "sha256": "6296c2b5c07dca8128e96d5296d621a3268803d4fa0e5812a21e52fe2802aacb"
+    },
+    {
+      "path": "public/vendor/pdfjs/cmaps/90pv-RKSJ-H.bcmap",
+      "bytes": 982,
+      "sha256": "fb5103f03d3a34547e18d316e52b6d9b26e485c662999222f84d2ba54c2e4fa8"
+    },
+    {
+      "path": "public/vendor/pdfjs/cmaps/90pv-RKSJ-V.bcmap",
+      "bytes": 260,
+      "sha256": "7bcb5ad2ba55b9662ce379e16c2d9cc2b82d621a579807353741172e4af615c2"
+    },
+    {
+      "path": "public/vendor/pdfjs/cmaps/Add-H.bcmap",
+      "bytes": 2419,
+      "sha256": "a2ffab28b990998181bcca9b0e914bb2207820f100ae31d5c469444892e5ad8e"
+    },
+    {
+      "path": "public/vendor/pdfjs/cmaps/Add-RKSJ-H.bcmap",
+      "bytes": 2413,
+      "sha256": "b29f4b52e2465d0485856d5e69f1ba69927deb2848d8fd328c8035583b35bb7e"
+    },
+    {
+      "path": "public/vendor/pdfjs/cmaps/Add-RKSJ-V.bcmap",
+      "bytes": 287,
+      "sha256": "2aa2232c283a3f5d0997c2834a36cead0b79ce2657944cfeed08140c293460ff"
+    },
+    {
+      "path": "public/vendor/pdfjs/cmaps/Add-V.bcmap",
+      "bytes": 282,
+      "sha256": "25125d3b1be64e86b2df5b3344170b45a42bcaa0b46e43a34314ef73c166e542"
+    },
+    {
+      "path": "public/vendor/pdfjs/cmaps/Adobe-CNS1-0.bcmap",
+      "bytes": 317,
+      "sha256": "8c65be9d51a9f269a547dc12460707aaf4031ab67ebe8a2900f4b4cc6b3e450e"
+    },
+    {
+      "path": "public/vendor/pdfjs/cmaps/Adobe-CNS1-1.bcmap",
+      "bytes": 371,
+      "sha256": "73152bc1a59cc594b414ac6068be48e5512b96ae85920c40e32a99269fdb0c04"
+    },
+    {
+      "path": "public/vendor/pdfjs/cmaps/Adobe-CNS1-2.bcmap",
+      "bytes": 376,
+      "sha256": "a1b8d353bdef9584c820464e8f1c9e2013d64ebf433cba0aa831dddf515818c2"
+    },
+    {
+      "path": "public/vendor/pdfjs/cmaps/Adobe-CNS1-3.bcmap",
+      "bytes": 401,
+      "sha256": "2ffc0c75c79fafde506163d3c08c390d183251009f3fbf6ae50d1167d14b9570"
+    },
+    {
+      "path": "public/vendor/pdfjs/cmaps/Adobe-CNS1-4.bcmap",
+      "bytes": 405,
+      "sha256": "98a1f470c878c6b9691a4d7aef776af8ac9b55f5587c9fafa00547f3bf655716"
+    },
+    {
+      "path": "public/vendor/pdfjs/cmaps/Adobe-CNS1-5.bcmap",
+      "bytes": 406,
+      "sha256": "ddd6e29955eb8cb545f2ebd09c628c3bbda5023256eda1b728f743c75fb77829"
+    },
+    {
+      "path": "public/vendor/pdfjs/cmaps/Adobe-CNS1-6.bcmap",
+      "bytes": 406,
+      "sha256": "317bb2db71e0e5b7b0c47b75de1da915c2e22f65f0c0861507f9ca7ba238f8a2"
+    },
+    {
+      "path": "public/vendor/pdfjs/cmaps/Adobe-CNS1-UCS2.bcmap",
+      "bytes": 41193,
+      "sha256": "e665837f2197c6bd08cd8955ad4d6932cee2398e2e328b25b00e6bfb3bd72af9"
+    },
+    {
+      "path": "public/vendor/pdfjs/cmaps/Adobe-GB1-0.bcmap",
+      "bytes": 217,
+      "sha256": "8b81cce8a11d510e505704953cfa4e4ab080c1a0cab991145a3512ee433946b9"
+    },
+    {
+      "path": "public/vendor/pdfjs/cmaps/Adobe-GB1-1.bcmap",
+      "bytes": 250,
+      "sha256": "0426983081788ec7202703e71f1efa4b860f75b936994236010b39d89251a81e"
+    },
+    {
+      "path": "public/vendor/pdfjs/cmaps/Adobe-GB1-2.bcmap",
+      "bytes": 465,
+      "sha256": "e67b37a83b160ab3831306a71a605893b24454ee81ac9b6123bf2d3984d268d5"
+    },
+    {
+      "path": "public/vendor/pdfjs/cmaps/Adobe-GB1-3.bcmap",
+      "bytes": 470,
+      "sha256": "aa299afc3e12a28726147305f191be28c7498078c8b182ece7886ac79cd99078"
+    },
+    {
+      "path": "public/vendor/pdfjs/cmaps/Adobe-GB1-4.bcmap",
+      "bytes": 601,
+      "sha256": "8fbd7d74c2ddb1350c1cecce54a73fde3f5453093d4bed445283ec0033d2097f"
+    },
+    {
+      "path": "public/vendor/pdfjs/cmaps/Adobe-GB1-5.bcmap",
+      "bytes": 625,
+      "sha256": "c22cb2fcff24112fa31dab2111bdc51957006576d31aad5a25e67793ac01428c"
+    },
+    {
+      "path": "public/vendor/pdfjs/cmaps/Adobe-GB1-UCS2.bcmap",
+      "bytes": 33974,
+      "sha256": "20507620260c0c935c35afc1e70e5888aa7125d5ec7ffc03cef1959feb2c1641"
+    },
+    {
+      "path": "public/vendor/pdfjs/cmaps/Adobe-Japan1-0.bcmap",
+      "bytes": 225,
+      "sha256": "464f08905236f5703b1f5cf8358767c8b18e6bcc808840d081f1de2c7ab38134"
+    },
+    {
+      "path": "public/vendor/pdfjs/cmaps/Adobe-Japan1-1.bcmap",
+      "bytes": 226,
+      "sha256": "4c823848722187d1ffe75ae3f5f9126ccd2d7895a05fad14c919fb119e037008"
+    },
+    {
+      "path": "public/vendor/pdfjs/cmaps/Adobe-Japan1-2.bcmap",
+      "bytes": 233,
+      "sha256": "7810fb808e367e70429e90a9478fe6a3fdc3e214f25c7582ce9c2da6a242315c"
+    },
+    {
+      "path": "public/vendor/pdfjs/cmaps/Adobe-Japan1-3.bcmap",
+      "bytes": 242,
+      "sha256": "84deb1828711ad3d390c9899c38abce1bf619d65ff7bf1a326ec95acc45f08f8"
+    },
+    {
+      "path": "public/vendor/pdfjs/cmaps/Adobe-Japan1-4.bcmap",
+      "bytes": 337,
+      "sha256": "3f8a4f974919c2b8bae5d10175ffa2673be140481e00840542c85d48ef184067"
+    },
+    {
+      "path": "public/vendor/pdfjs/cmaps/Adobe-Japan1-5.bcmap",
+      "bytes": 430,
+      "sha256": "1d3ce4ff28d977f8cf37a912ae4ec811f4175c3167b1ec0b2567feec3e79e1db"
+    },
+    {
+      "path": "public/vendor/pdfjs/cmaps/Adobe-Japan1-6.bcmap",
+      "bytes": 485,
+      "sha256": "5609797b9401b30be72ef9645da62a87829f058c3be4b5c623383119f584b1d9"
+    },
+    {
+      "path": "public/vendor/pdfjs/cmaps/Adobe-Japan1-UCS2.bcmap",
+      "bytes": 40951,
+      "sha256": "66c5d0dc4964f4093e77b194023f3a0f689324028ec8330e1e1d0570bcba7c2f"
+    },
+    {
+      "path": "public/vendor/pdfjs/cmaps/Adobe-Korea1-0.bcmap",
+      "bytes": 241,
+      "sha256": "dfb8c3874f0e5a8c3acf597d2c12d2b63e90bc5e4f0fce990ec4c56077d80b32"
+    },
+    {
+      "path": "public/vendor/pdfjs/cmaps/Adobe-Korea1-1.bcmap",
+      "bytes": 386,
+      "sha256": "62f277b7b1c441c007797ae707d5c37258d029ce4661a2b911e2e1ee35e6adc1"
+    },
+    {
+      "path": "public/vendor/pdfjs/cmaps/Adobe-Korea1-2.bcmap",
+      "bytes": 391,
+      "sha256": "1d77068af462f96d7ad28ad7e7d43eef6423c685b479d7dc25ff5df38db0380d"
+    },
+    {
+      "path": "public/vendor/pdfjs/cmaps/Adobe-Korea1-UCS2.bcmap",
+      "bytes": 23293,
+      "sha256": "857b723088be97255053562bfa41bd1075a7f7910d3bab59a0645c8bbc7060ff"
+    },
+    {
+      "path": "public/vendor/pdfjs/cmaps/B5-H.bcmap",
+      "bytes": 1086,
+      "sha256": "718ad0ffbef4c34f8f3f31292c462e519cd567a5511fc8b346c60010d64f4ef9"
+    },
+    {
+      "path": "public/vendor/pdfjs/cmaps/B5-V.bcmap",
+      "bytes": 142,
+      "sha256": "b5c37383517477620ced927b6b4ffd4f4cc6230d8051b5b46a21d6768e07f7d8"
+    },
+    {
+      "path": "public/vendor/pdfjs/cmaps/B5pc-H.bcmap",
+      "bytes": 1099,
+      "sha256": "bab6028aead1d6149400e904ab10cfd319082d826473ed4c582c8eeed920f17e"
+    },
+    {
+      "path": "public/vendor/pdfjs/cmaps/B5pc-V.bcmap",
+      "bytes": 144,
+      "sha256": "41543142b9767f3b76133899fc8453282b01ad3c653acaeea42d78c5a7d08c63"
+    },
+    {
+      "path": "public/vendor/pdfjs/cmaps/CNS-EUC-H.bcmap",
+      "bytes": 1780,
+      "sha256": "e8f89cd61e6486b948205da46499d659ed0aed949b7095fd3c8e95ffe2b0e7a9"
+    },
+    {
+      "path": "public/vendor/pdfjs/cmaps/CNS-EUC-V.bcmap",
+      "bytes": 1920,
+      "sha256": "cae422bec2ac6dbe86bf921cec942bacd2d0b733ffcca5f91b3ba14e917025a0"
+    },
+    {
+      "path": "public/vendor/pdfjs/cmaps/CNS1-H.bcmap",
+      "bytes": 706,
+      "sha256": "e8487971ab20cd16f3de3e8ac56ec994b72b658ad113f2818239dfd5108f501a"
+    },
+    {
+      "path": "public/vendor/pdfjs/cmaps/CNS1-V.bcmap",
+      "bytes": 143,
+      "sha256": "42df8076aaa7574505e7304af83a3323ec032c4177d64b1309db8c043d594a8a"
+    },
+    {
+      "path": "public/vendor/pdfjs/cmaps/CNS2-H.bcmap",
+      "bytes": 504,
+      "sha256": "bc6024d274d440f0625c69e25f37036ef6cb6689432ceaa160d3432a2a716ca7"
+    },
+    {
+      "path": "public/vendor/pdfjs/cmaps/CNS2-V.bcmap",
+      "bytes": 93,
+      "sha256": "2e4f70a8afd23a121030fc2e5b5f3816e903b11e7ba8b8c09654b31c80399c38"
+    },
+    {
+      "path": "public/vendor/pdfjs/cmaps/ETHK-B5-H.bcmap",
+      "bytes": 4426,
+      "sha256": "d2f10fa519336bc4efcc7b6deb9604b75429946b40d82e311cb3a97a1994c89a"
+    },
+    {
+      "path": "public/vendor/pdfjs/cmaps/ETHK-B5-V.bcmap",
+      "bytes": 158,
+      "sha256": "1fea3fd0d9f0f679f80505800851ef2e4131d81127e18c006938ffa2f4c8b247"
+    },
+    {
+      "path": "public/vendor/pdfjs/cmaps/ETen-B5-H.bcmap",
+      "bytes": 1125,
+      "sha256": "87ee6b3f5bfda5fe26fa35431264c7d73070d10dbbf398a75185d63ae322c18d"
+    },
+    {
+      "path": "public/vendor/pdfjs/cmaps/ETen-B5-V.bcmap",
+      "bytes": 158,
+      "sha256": "47dc0d2c21e3bde317947aec1675ceabc1d5460a60bf9c24334b8c407a17172c"
+    },
+    {
+      "path": "public/vendor/pdfjs/cmaps/ETenms-B5-H.bcmap",
+      "bytes": 101,
+      "sha256": "d5f5a73da4173b7da9a3a20e16f26f9cd5d12deb1553409919e0cec6fd37fdee"
+    },
+    {
+      "path": "public/vendor/pdfjs/cmaps/ETenms-B5-V.bcmap",
+      "bytes": 172,
+      "sha256": "18252fca90f472f479af1bddd60d6ab51c8e1b55dcf6845951426504934543e0"
+    },
+    {
+      "path": "public/vendor/pdfjs/cmaps/EUC-H.bcmap",
+      "bytes": 578,
+      "sha256": "f9939cd57fccdc65c5d9f4c205fd497ebdbd283643308da5663801a8c1d9c595"
+    },
+    {
+      "path": "public/vendor/pdfjs/cmaps/EUC-V.bcmap",
+      "bytes": 170,
+      "sha256": "1283a50a706507c4436da83ede9ad7a4440be25378f2e96f6c81a430081426a3"
+    },
+    {
+      "path": "public/vendor/pdfjs/cmaps/Ext-H.bcmap",
+      "bytes": 2536,
+      "sha256": "4000ed4e61a1c668ef453bbd0603cfa383defa793abd46a57ed870d7f527350b"
+    },
+    {
+      "path": "public/vendor/pdfjs/cmaps/Ext-RKSJ-H.bcmap",
+      "bytes": 2542,
+      "sha256": "e0d2f0df337660e73813238dd4a725f11f0621b90f3273857db253d0e7694caa"
+    },
+    {
+      "path": "public/vendor/pdfjs/cmaps/Ext-RKSJ-V.bcmap",
+      "bytes": 218,
+      "sha256": "f617a22b6d67febb187990952006c91a9f5a4db21155d268c656252d0c21985d"
+    },
+    {
+      "path": "public/vendor/pdfjs/cmaps/Ext-V.bcmap",
+      "bytes": 215,
+      "sha256": "c2087fb845a9e3acea0c2922cd40e6af67e11957bec74dcd597f1285edd490ce"
+    },
+    {
+      "path": "public/vendor/pdfjs/cmaps/GB-EUC-H.bcmap",
+      "bytes": 549,
+      "sha256": "928bad06fd84a48f5ba7150d7716609119fb660f2aaa73eccad81ddab9b9d203"
+    },
+    {
+      "path": "public/vendor/pdfjs/cmaps/GB-EUC-V.bcmap",
+      "bytes": 179,
+      "sha256": "a9ad88ac2479da529b16dc48abc5952332e27bc355335f91df5729a587533324"
+    },
+    {
+      "path": "public/vendor/pdfjs/cmaps/GB-H.bcmap",
+      "bytes": 528,
+      "sha256": "1018c777a8910b5bb46d7d54a4aee9d51ca5cff8addb2b41c969d9101cb3fd1c"
+    },
+    {
+      "path": "public/vendor/pdfjs/cmaps/GB-V.bcmap",
+      "bytes": 175,
+      "sha256": "0b96789143c0bbf9f1641ae7165b3456dccd14dabffcbb0bd654d5bf6f94f863"
+    },
+    {
+      "path": "public/vendor/pdfjs/cmaps/GBK-EUC-H.bcmap",
+      "bytes": 14692,
+      "sha256": "2103fed28650ede096a2281104a1a8a4304dae0db414342c636867522307123b"
+    },
+    {
+      "path": "public/vendor/pdfjs/cmaps/GBK-EUC-V.bcmap",
+      "bytes": 180,
+      "sha256": "a7fd35dd14d9dbdb955f34e6c0630618b6620dfd09d4283b2f65a65ce77fcaea"
+    },
+    {
+      "path": "public/vendor/pdfjs/cmaps/GBK2K-H.bcmap",
+      "bytes": 19662,
+      "sha256": "3d919ae72af16c5cc6846ec87a4326a9f125e493c59d3628429d35c2c95fe8c4"
+    },
+    {
+      "path": "public/vendor/pdfjs/cmaps/GBK2K-V.bcmap",
+      "bytes": 219,
+      "sha256": "b927fdfd595c07ce9158bf2ec13f4641b2e83b01c70989dadfabd6ed7c6ac2dc"
+    },
+    {
+      "path": "public/vendor/pdfjs/cmaps/GBKp-EUC-H.bcmap",
+      "bytes": 14686,
+      "sha256": "d15ebd8e81fb4fe8a244f1b1e877922e03500ac69eddf5001093e502430451d2"
+    },
+    {
+      "path": "public/vendor/pdfjs/cmaps/GBKp-EUC-V.bcmap",
+      "bytes": 181,
+      "sha256": "fdc736d46e642625dccc8ad8c59f2c69fc7db7a13f2e799c6c6b779e707bb97a"
+    },
+    {
+      "path": "public/vendor/pdfjs/cmaps/GBT-EUC-H.bcmap",
+      "bytes": 7290,
+      "sha256": "dc5f44e48a39f3367ae28665027d8ab1d8cedb5a9dcc5068a900acd6709f60f9"
+    },
+    {
+      "path": "public/vendor/pdfjs/cmaps/GBT-EUC-V.bcmap",
+      "bytes": 180,
+      "sha256": "a1ad24e63653b8aa388c18fa5e498f007564e43dde699a9f91ccb4645c999be8"
+    },
+    {
+      "path": "public/vendor/pdfjs/cmaps/GBT-H.bcmap",
+      "bytes": 7269,
+      "sha256": "8afda745a505763f3ff54c8126eeb48ef376ea9ed07d9f42ff9a22c5c547ec57"
+    },
+    {
+      "path": "public/vendor/pdfjs/cmaps/GBT-V.bcmap",
+      "bytes": 176,
+      "sha256": "cdc2ec5c3c7c7033290c9a8894878202f08674eb9b1ae7d36218430326768771"
+    },
+    {
+      "path": "public/vendor/pdfjs/cmaps/GBTpc-EUC-H.bcmap",
+      "bytes": 7298,
+      "sha256": "7b23e2f7bfdb6c918f567b7324bf858f398bd8cd5f268d74ece19a3c91bf4f32"
+    },
+    {
+      "path": "public/vendor/pdfjs/cmaps/GBTpc-EUC-V.bcmap",
+      "bytes": 182,
+      "sha256": "d7a1b13ead9ab511cf2cd01de6ce8b02aa8e8767e84895337d7a3b67f039f93b"
+    },
+    {
+      "path": "public/vendor/pdfjs/cmaps/GBpc-EUC-H.bcmap",
+      "bytes": 557,
+      "sha256": "3c4a4eb82f05abe51f6650985c630e180438bfdd491318f5d20d2ec29236e1c3"
+    },
+    {
+      "path": "public/vendor/pdfjs/cmaps/GBpc-EUC-V.bcmap",
+      "bytes": 181,
+      "sha256": "215bdfa2842705624b4cf4cd29b8e3c720f1e192365e0305c11030a424c84d7c"
+    },
+    {
+      "path": "public/vendor/pdfjs/cmaps/H.bcmap",
+      "bytes": 553,
+      "sha256": "a0233e21047ec00b852125b243cbcf30abee511155b6d8159c24f944384bc9ee"
+    },
+    {
+      "path": "public/vendor/pdfjs/cmaps/HKdla-B5-H.bcmap",
+      "bytes": 2654,
+      "sha256": "5242bce18fb13ab4cc59b146a03eba36e4ce42667eeff09e10981a9d2aa4996b"
+    },
+    {
+      "path": "public/vendor/pdfjs/cmaps/HKdla-B5-V.bcmap",
+      "bytes": 148,
+      "sha256": "2e0537f786c0791d41a925f72bad2d4e7268aa6cbf15a1400a722672cec38e2c"
+    },
+    {
+      "path": "public/vendor/pdfjs/cmaps/HKdlb-B5-H.bcmap",
+      "bytes": 2414,
+      "sha256": "fdc8159984bf5dbe475c0d5dfcb621ecee4dea07c38c668bd77f4c679e23b9b3"
+    },
+    {
+      "path": "public/vendor/pdfjs/cmaps/HKdlb-B5-V.bcmap",
+      "bytes": 148,
+      "sha256": "b249eb9dcb915ab45057c5d4d7aa55ef88d0efbb092af6bae0b2d4705d139abf"
+    },
+    {
+      "path": "public/vendor/pdfjs/cmaps/HKgccs-B5-H.bcmap",
+      "bytes": 2292,
+      "sha256": "ab64c7fc5e9b2e97750cc4f269b0da14fd8649e49151b7598c8df86599bac591"
+    },
+    {
+      "path": "public/vendor/pdfjs/cmaps/HKgccs-B5-V.bcmap",
+      "bytes": 149,
+      "sha256": "02ebdf7cdffb5395fb21091cd58a013a18ae5388922822f9dc6292ef16b98956"
+    },
+    {
+      "path": "public/vendor/pdfjs/cmaps/HKm314-B5-H.bcmap",
+      "bytes": 1772,
+      "sha256": "bfd8bbde6b36a9da4c1c902c74121a30d9807a7079a00eeea218be6adc223cef"
+    },
+    {
+      "path": "public/vendor/pdfjs/cmaps/HKm314-B5-V.bcmap",
+      "bytes": 149,
+      "sha256": "2a64a815cfb6fdd480674a868762e3d161fda17543b20c9209978559f0667164"
+    },
+    {
+      "path": "public/vendor/pdfjs/cmaps/HKm471-B5-H.bcmap",
+      "bytes": 2171,
+      "sha256": "49d7c037758826b5b6c0fa329c35bbf25d3943197754e72ecd30c6fb04d745e6"
+    },
+    {
+      "path": "public/vendor/pdfjs/cmaps/HKm471-B5-V.bcmap",
+      "bytes": 149,
+      "sha256": "be24c109e78aa4fe3c1f27d30aab3ed0741e783fa1b6b6c2719741072b54b132"
+    },
+    {
+      "path": "public/vendor/pdfjs/cmaps/HKscs-B5-H.bcmap",
+      "bytes": 4437,
+      "sha256": "08599378f41d96b40537adef6e6edcc4a787bc63f5accf47c026df4905a13914"
+    },
+    {
+      "path": "public/vendor/pdfjs/cmaps/HKscs-B5-V.bcmap",
+      "bytes": 159,
+      "sha256": "d073542b7dad1c4cbf01c1af5f0cd13218d1281a491956e310c55702fc8705c4"
+    },
+    {
+      "path": "public/vendor/pdfjs/cmaps/Hankaku.bcmap",
+      "bytes": 132,
+      "sha256": "b454701f7aecd7856769016dfd04ca64280a060f2c67a2466d50b4395d24974e"
+    },
+    {
+      "path": "public/vendor/pdfjs/cmaps/Hiragana.bcmap",
+      "bytes": 124,
+      "sha256": "2ed669394756dd9458651cd9995ab29ab691ecb7686659003306cdf22767a414"
+    },
+    {
+      "path": "public/vendor/pdfjs/cmaps/KSC-EUC-H.bcmap",
+      "bytes": 1848,
+      "sha256": "6784e16dbc5861c036c23d3e55f0d4ba0975a3e464da0ee8e49bcfff0be070c4"
+    },
+    {
+      "path": "public/vendor/pdfjs/cmaps/KSC-EUC-V.bcmap",
+      "bytes": 164,
+      "sha256": "fdb36bad85e9924823d49db374067988e024cf80fc894711f2c9178951cbbe95"
+    },
+    {
+      "path": "public/vendor/pdfjs/cmaps/KSC-H.bcmap",
+      "bytes": 1831,
+      "sha256": "c1f6d61f1d3304fd539a65ae72624fa567ecc3853bf52e283958a7a2515b3eee"
+    },
+    {
+      "path": "public/vendor/pdfjs/cmaps/KSC-Johab-H.bcmap",
+      "bytes": 16791,
+      "sha256": "939993d213f68db763bf156217c217ae23af082b91a0eacecf3d11eb4ff8ef8c"
+    },
+    {
+      "path": "public/vendor/pdfjs/cmaps/KSC-Johab-V.bcmap",
+      "bytes": 166,
+      "sha256": "5d61967aac0e666def721e8b8d0fed8f95a879a14f2e76ce516c3d11c621e519"
+    },
+    {
+      "path": "public/vendor/pdfjs/cmaps/KSC-V.bcmap",
+      "bytes": 160,
+      "sha256": "d7da5afd9f1fe74816d79c9325f0139a4efb6438664ebfdf9a7aa92f3034360f"
+    },
+    {
+      "path": "public/vendor/pdfjs/cmaps/KSCms-UHC-H.bcmap",
+      "bytes": 2787,
+      "sha256": "5b70d8f6a4fa9e2283dc649f0ff95d906d56efbee50a20e8d2faec3a8fed078e"
+    },
+    {
+      "path": "public/vendor/pdfjs/cmaps/KSCms-UHC-HW-H.bcmap",
+      "bytes": 2789,
+      "sha256": "a5e6ba22aceb02fdedee11bfb9ed138463d89e85b87810b9f075b469d936f8ec"
+    },
+    {
+      "path": "public/vendor/pdfjs/cmaps/KSCms-UHC-HW-V.bcmap",
+      "bytes": 169,
+      "sha256": "890332a6a26880d463a12f2a6ff048bf9cf7e45077cfb1ca8815b89baa7bf411"
+    },
+    {
+      "path": "public/vendor/pdfjs/cmaps/KSCms-UHC-V.bcmap",
+      "bytes": 166,
+      "sha256": "1631b531c9a40c8cbe24c2317dba107362e49fa6e18af620414d627c111d570c"
+    },
+    {
+      "path": "public/vendor/pdfjs/cmaps/KSCpc-EUC-H.bcmap",
+      "bytes": 2024,
+      "sha256": "709480682c55cedbb0124b9960d78e28febeee0df2e34607d61aac6601647ec7"
+    },
+    {
+      "path": "public/vendor/pdfjs/cmaps/KSCpc-EUC-V.bcmap",
+      "bytes": 166,
+      "sha256": "031707887d6fc2378a36cdb6775334fd7a236c3f95048d8436abf43fe26fc49d"
+    },
+    {
+      "path": "public/vendor/pdfjs/cmaps/Katakana.bcmap",
+      "bytes": 100,
+      "sha256": "3b6ca6642fbf8822da00d5e58a8aa275216d5c32dbf2bd73e934197fc9fc5c53"
+    },
+    {
+      "path": "public/vendor/pdfjs/cmaps/LICENSE",
+      "bytes": 2080,
+      "sha256": "aa92ab5a472974865a96fd4a4e9c13bb41bf6fe1b309cb6b8da48bc9e19839a2"
+    },
+    {
+      "path": "public/vendor/pdfjs/cmaps/NWP-H.bcmap",
+      "bytes": 2765,
+      "sha256": "286c6c9e335da330928a01edc3c97a3a623f1f7f3c42762b0a7dc2f651b1a78f"
+    },
+    {
+      "path": "public/vendor/pdfjs/cmaps/NWP-V.bcmap",
+      "bytes": 252,
+      "sha256": "3a75fb7b59adfb172710758c425d8ac6c93fd5360a64dd4afd5dd04e60ab4b4d"
+    },
+    {
+      "path": "public/vendor/pdfjs/cmaps/RKSJ-H.bcmap",
+      "bytes": 534,
+      "sha256": "a70de61a22a898f693f02cc011c3e3cff2e10aaa7cddb4661e456a21ae859f78"
+    },
+    {
+      "path": "public/vendor/pdfjs/cmaps/RKSJ-V.bcmap",
+      "bytes": 170,
+      "sha256": "68c1a64506471a524ea5cfc3b3a9f8f70031989a6bd95427b1351f33ccf50b06"
+    },
+    {
+      "path": "public/vendor/pdfjs/cmaps/Roman.bcmap",
+      "bytes": 96,
+      "sha256": "1c6b3ef9d9e5cb1aa329142ce9414b90f9b6d7f9182a2a9e927378dab8f0d43f"
+    },
+    {
+      "path": "public/vendor/pdfjs/cmaps/UniCNS-UCS2-H.bcmap",
+      "bytes": 48280,
+      "sha256": "779428116752f34e2490a1941d24e4634c71e3c22d053b811d2090ae2fb3c704"
+    },
+    {
+      "path": "public/vendor/pdfjs/cmaps/UniCNS-UCS2-V.bcmap",
+      "bytes": 156,
+      "sha256": "1e5cc184b850ea44abc2df8ae5674279df668e8edf5e2a1a2ea2bd77adbd280f"
+    },
+    {
+      "path": "public/vendor/pdfjs/cmaps/UniCNS-UTF16-H.bcmap",
+      "bytes": 50419,
+      "sha256": "32ff139b3c7b91d6ad25f994701f3ce7b242906022c418fd73e6493fc228bfe5"
+    },
+    {
+      "path": "public/vendor/pdfjs/cmaps/UniCNS-UTF16-V.bcmap",
+      "bytes": 156,
+      "sha256": "278eb1e68d1a236c60ef59472cf0176ee0d45f364285e76ca12419a08d46fb9a"
+    },
+    {
+      "path": "public/vendor/pdfjs/cmaps/UniCNS-UTF32-H.bcmap",
+      "bytes": 52679,
+      "sha256": "bf26eb67fe19ee5ba915799e80ca72408400aa8342fdf6a244a4f44de8f97336"
+    },
+    {
+      "path": "public/vendor/pdfjs/cmaps/UniCNS-UTF32-V.bcmap",
+      "bytes": 160,
+      "sha256": "f7da3caf83ceb1cb37936fa10700d9ba6e9c3f72c5bc9724e3ac79bff0c0179e"
+    },
+    {
+      "path": "public/vendor/pdfjs/cmaps/UniCNS-UTF8-H.bcmap",
+      "bytes": 53629,
+      "sha256": "2f2a742bcd1a84a148a4a518b9eed51a8f9c6ca5ed3bc5e2e41fff97de5dc2d8"
+    },
+    {
+      "path": "public/vendor/pdfjs/cmaps/UniCNS-UTF8-V.bcmap",
+      "bytes": 157,
+      "sha256": "b7c3f10780a8c62dd1c8ff6c30dc1e4e23b6cdc87c3a96fcd514cc98ffd3af9d"
+    },
+    {
+      "path": "public/vendor/pdfjs/cmaps/UniGB-UCS2-H.bcmap",
+      "bytes": 43366,
+      "sha256": "9201569b402e81ad8860650bd86350c4fa28e5dd5971f05fcacaf40f51de18ed"
+    },
+    {
+      "path": "public/vendor/pdfjs/cmaps/UniGB-UCS2-V.bcmap",
+      "bytes": 193,
+      "sha256": "f10282335e4d64203bc2a653a3a47d745ec76c8ae04549f4d50180c1899be216"
+    },
+    {
+      "path": "public/vendor/pdfjs/cmaps/UniGB-UTF16-H.bcmap",
+      "bytes": 44086,
+      "sha256": "386fd39581245c034da016a92d23f3df1117d169f996100050b264fc09a84e35"
+    },
+    {
+      "path": "public/vendor/pdfjs/cmaps/UniGB-UTF16-V.bcmap",
+      "bytes": 178,
+      "sha256": "0473cfbba612b92dd9918f0ff8aee9112897c48e0ffdc0eb82da3144ed8ea84a"
+    },
+    {
+      "path": "public/vendor/pdfjs/cmaps/UniGB-UTF32-H.bcmap",
+      "bytes": 45738,
+      "sha256": "f48a145dc4e3ed1dca1dde7111716a72306a2a4191ab05c6bae3a5c3a961cd2f"
+    },
+    {
+      "path": "public/vendor/pdfjs/cmaps/UniGB-UTF32-V.bcmap",
+      "bytes": 182,
+      "sha256": "106acc49b7118bdef944e32107b4f348238f3929a0a15d3b7aab7b9101535993"
+    },
+    {
+      "path": "public/vendor/pdfjs/cmaps/UniGB-UTF8-H.bcmap",
+      "bytes": 46837,
+      "sha256": "f217b439c80ee5fa1bc2cf6d1defcc319f8d84483d166a00ee199e05a68588df"
+    },
+    {
+      "path": "public/vendor/pdfjs/cmaps/UniGB-UTF8-V.bcmap",
+      "bytes": 181,
+      "sha256": "a64df947632878eacc532fa193c735c92a383b7d66e6f8374ac193af7c64fc63"
+    },
+    {
+      "path": "public/vendor/pdfjs/cmaps/UniJIS-UCS2-H.bcmap",
+      "bytes": 25439,
+      "sha256": "ad2352f40870880fbf7f8ee5abadff743fbd025fbf9830b8ada472d1c5e4da0b"
+    },
+    {
+      "path": "public/vendor/pdfjs/cmaps/UniJIS-UCS2-HW-H.bcmap",
+      "bytes": 119,
+      "sha256": "16e87edca954177c0881c874859d6783220925d821b5cdfb8755b61ebd93f9ce"
+    },
+    {
+      "path": "public/vendor/pdfjs/cmaps/UniJIS-UCS2-HW-V.bcmap",
+      "bytes": 680,
+      "sha256": "1973457e2c0192819947e56068625b34fb9a72ecc8a476ce6d7eaae5f73e2e5c"
+    },
+    {
+      "path": "public/vendor/pdfjs/cmaps/UniJIS-UCS2-V.bcmap",
+      "bytes": 664,
+      "sha256": "42a133d8e2ce9dd6d2288018e01592d2bf2435b326d39b94ea0b6e6a44ac33d3"
+    },
+    {
+      "path": "public/vendor/pdfjs/cmaps/UniJIS-UTF16-H.bcmap",
+      "bytes": 39443,
+      "sha256": "f6a89c5688978548c83fcee990e205bc63c74274d5c69b49032a3bd4c49a05ee"
+    },
+    {
+      "path": "public/vendor/pdfjs/cmaps/UniJIS-UTF16-V.bcmap",
+      "bytes": 643,
+      "sha256": "c67126fc7c73850855186bb0d6482ac0a365057e0b58778c4ab9f234683fef53"
+    },
+    {
+      "path": "public/vendor/pdfjs/cmaps/UniJIS-UTF32-H.bcmap",
+      "bytes": 40539,
+      "sha256": "96195950ce0fe24443d8eb426fa6b88534ec421d7bef9046f0b2362809cfba73"
+    },
+    {
+      "path": "public/vendor/pdfjs/cmaps/UniJIS-UTF32-V.bcmap",
+      "bytes": 677,
+      "sha256": "ed4dafda402bdd19c4d5d8bf2ab41473c0f86f384552b4c7b963d6627daedeb1"
+    },
+    {
+      "path": "public/vendor/pdfjs/cmaps/UniJIS-UTF8-H.bcmap",
+      "bytes": 41695,
+      "sha256": "798fb0bf06ab0788d1f6a91c2db7de581612eef03c628f10e8f7ecd8f70ab448"
+    },
+    {
+      "path": "public/vendor/pdfjs/cmaps/UniJIS-UTF8-V.bcmap",
+      "bytes": 678,
+      "sha256": "1021611424f913b2df0bfdbe94bd327c04e224ec89d8e821c6501ea3d21f4265"
+    },
+    {
+      "path": "public/vendor/pdfjs/cmaps/UniJIS2004-UTF16-H.bcmap",
+      "bytes": 39534,
+      "sha256": "710a32d7cb43fd6bd9dbf30da5971f8c941590f74441e208d852c2be0e74cc97"
+    },
+    {
+      "path": "public/vendor/pdfjs/cmaps/UniJIS2004-UTF16-V.bcmap",
+      "bytes": 647,
+      "sha256": "3b149aff5c5707b57fb3215d1775852c8b1f413ec0f679ea628f25cf87fe098d"
+    },
+    {
+      "path": "public/vendor/pdfjs/cmaps/UniJIS2004-UTF32-H.bcmap",
+      "bytes": 40630,
+      "sha256": "8d2658e18741af7937d586a57c89729a6fec0d86121197c1f8518aa58b29cdfb"
+    },
+    {
+      "path": "public/vendor/pdfjs/cmaps/UniJIS2004-UTF32-V.bcmap",
+      "bytes": 681,
+      "sha256": "6dd475782f2897648a683c48b2fa015a15b8f06856760bddc8a17a63f418bacb"
+    },
+    {
+      "path": "public/vendor/pdfjs/cmaps/UniJIS2004-UTF8-H.bcmap",
+      "bytes": 41779,
+      "sha256": "691c614ce432b3e62486efb54e5c84c6da5afe9b51b21253bde4758feb484183"
+    },
+    {
+      "path": "public/vendor/pdfjs/cmaps/UniJIS2004-UTF8-V.bcmap",
+      "bytes": 682,
+      "sha256": "40a8c7ea2d46711c5f78fc9a878a7db68b1543ba5cd60ecf14f519a2deb829b7"
+    },
+    {
+      "path": "public/vendor/pdfjs/cmaps/UniJISPro-UCS2-HW-V.bcmap",
+      "bytes": 705,
+      "sha256": "6826f94d789d7bf1960668c1c5819c34c9585c1b23152fbc19ee81c7df08524b"
+    },
+    {
+      "path": "public/vendor/pdfjs/cmaps/UniJISPro-UCS2-V.bcmap",
+      "bytes": 689,
+      "sha256": "493de9fd1a08f7946065d8ab58f0c3c9fe489f5a0f109f2d05a3169b4bd5789f"
+    },
+    {
+      "path": "public/vendor/pdfjs/cmaps/UniJISPro-UTF8-V.bcmap",
+      "bytes": 726,
+      "sha256": "6181d382cf736c5e09492e8be9f26f31fa25b7462253f23ab16646af432cad81"
+    },
+    {
+      "path": "public/vendor/pdfjs/cmaps/UniJISX0213-UTF32-H.bcmap",
+      "bytes": 40517,
+      "sha256": "692044e1fb33445668632bc9fe7386805c624864be1ddeb29d65bb0c99fc630c"
+    },
+    {
+      "path": "public/vendor/pdfjs/cmaps/UniJISX0213-UTF32-V.bcmap",
+      "bytes": 684,
+      "sha256": "dd54e16ca7bffb3a886242549b2bf7d78a277087f7c60d2636f118c21a5b0646"
+    },
+    {
+      "path": "public/vendor/pdfjs/cmaps/UniJISX02132004-UTF32-H.bcmap",
+      "bytes": 40608,
+      "sha256": "f80ea5a989be30ccda5a8804baef6d3b4b044d2b339bf8b31c671b2466171cf6"
+    },
+    {
+      "path": "public/vendor/pdfjs/cmaps/UniJISX02132004-UTF32-V.bcmap",
+      "bytes": 688,
+      "sha256": "94c22bd99e771c5fbe0dd8dc39850570d4db0075074aca13e272813edd7cc57f"
+    },
+    {
+      "path": "public/vendor/pdfjs/cmaps/UniKS-UCS2-H.bcmap",
+      "bytes": 25783,
+      "sha256": "a1081396ab4adb6f4a5b6c15f896963c244c1c9bcb65ce5616d06096a1b9811c"
+    },
+    {
+      "path": "public/vendor/pdfjs/cmaps/UniKS-UCS2-V.bcmap",
+      "bytes": 178,
+      "sha256": "6cab547431958fbdc1d401d06ebd4dd61a73f5509a10f974df32bcbca11a2e43"
+    },
+    {
+      "path": "public/vendor/pdfjs/cmaps/UniKS-UTF16-H.bcmap",
+      "bytes": 26327,
+      "sha256": "42d35b396286499dfae1737a07adb3a64500df37b426580bfb1d3ea872938519"
+    },
+    {
+      "path": "public/vendor/pdfjs/cmaps/UniKS-UTF16-V.bcmap",
+      "bytes": 164,
+      "sha256": "5bdb7390c80dcc136cb47d41dc7460082560969c17322ee739fe3020fb642410"
+    },
+    {
+      "path": "public/vendor/pdfjs/cmaps/UniKS-UTF32-H.bcmap",
+      "bytes": 26451,
+      "sha256": "3a01ec51ed1b828101351e337ffb8250abe11880032e5210f881170fed2588de"
+    },
+    {
+      "path": "public/vendor/pdfjs/cmaps/UniKS-UTF32-V.bcmap",
+      "bytes": 168,
+      "sha256": "dfda895eceaed081af030dbbb962b49629eea817fc3c02bae15db93d0c68acd7"
+    },
+    {
+      "path": "public/vendor/pdfjs/cmaps/UniKS-UTF8-H.bcmap",
+      "bytes": 27790,
+      "sha256": "3fac9c65145f72d7d42157a3b9c5ed6904632184e6a0888f2b828699afd2002f"
+    },
+    {
+      "path": "public/vendor/pdfjs/cmaps/UniKS-UTF8-V.bcmap",
+      "bytes": 169,
+      "sha256": "9ecc6cf30dd354b9778ddba163b6cc7302b087ce9f39d1ba73472d2b75ed13ca"
+    },
+    {
+      "path": "public/vendor/pdfjs/cmaps/V.bcmap",
+      "bytes": 166,
+      "sha256": "b9ad1c0c09ff14bca52f9a28a9767eb857ad0e8946e64ba14c7387a7eb69866a"
+    },
+    {
+      "path": "public/vendor/pdfjs/cmaps/WP-Symbol.bcmap",
+      "bytes": 179,
+      "sha256": "543923bead225732aba30976690ee89095a19628277b5863efecc2c728d5d7bf"
+    },
+    {
+      "path": "public/vendor/pdfjs/pdf.mjs",
+      "bytes": 976824,
+      "sha256": "5464c1bf96dddd169eed8f4afacffde4c9369d397b7eb383fb6bbe2e28fa400c"
+    },
+    {
+      "path": "public/vendor/pdfjs/pdf.worker.mjs",
+      "bytes": 2139222,
+      "sha256": "913e24da1c2a5cc0c3fd595c83eaee15694438001b68ba8cadd4f583af53a15e"
+    },
+    {
+      "path": "public/vendor/pdfjs/standard_fonts/FoxitDingbats.pfb",
+      "bytes": 29513,
+      "sha256": "845c752392b6c914fb989c75a08b7792b88f542d2499042ef2889f8c814a16ed"
+    },
+    {
+      "path": "public/vendor/pdfjs/standard_fonts/FoxitFixed.pfb",
+      "bytes": 17597,
+      "sha256": "b6c8fe53f134b8b6d4578cd2d544df4cee9624c4efa8d51a560fb40ea296101b"
+    },
+    {
+      "path": "public/vendor/pdfjs/standard_fonts/FoxitFixedBold.pfb",
+      "bytes": 18055,
+      "sha256": "f1b7159702973f54fc86254ea38bcf3712b2a736eb3a0995751e9f4bb45ad603"
+    },
+    {
+      "path": "public/vendor/pdfjs/standard_fonts/FoxitFixedBoldItalic.pfb",
+      "bytes": 19151,
+      "sha256": "8a000945843bd31add06aee63bf9fd41b7578b4f3242a4b7cd46349ad9d24d4d"
+    },
+    {
+      "path": "public/vendor/pdfjs/standard_fonts/FoxitFixedItalic.pfb",
+      "bytes": 18746,
+      "sha256": "5007faf8320fa1fcc08b8894b356ad976f60b992ba29ee5272578bbdebaf3876"
+    },
+    {
+      "path": "public/vendor/pdfjs/standard_fonts/FoxitSerif.pfb",
+      "bytes": 19469,
+      "sha256": "4f57d2b9d884af8f907bf22df6019b52d86cbf6214fdbd02b1ae05472a543f35"
+    },
+    {
+      "path": "public/vendor/pdfjs/standard_fonts/FoxitSerifBold.pfb",
+      "bytes": 19395,
+      "sha256": "0bdf4b04e964139818d51eda03d566ba999fc3ba2421b1c6c51f9dc969022e80"
+    },
+    {
+      "path": "public/vendor/pdfjs/standard_fonts/FoxitSerifBoldItalic.pfb",
+      "bytes": 20733,
+      "sha256": "a406cac82583bf98175cb62c87ed5e95c45fbb34eece63a10b0a13e793cb2e10"
+    },
+    {
+      "path": "public/vendor/pdfjs/standard_fonts/FoxitSerifItalic.pfb",
+      "bytes": 21227,
+      "sha256": "610ae0687198045c4db5d1a6650fd5e92536631706382eb8b72e38df578d0ae9"
+    },
+    {
+      "path": "public/vendor/pdfjs/standard_fonts/FoxitSymbol.pfb",
+      "bytes": 16729,
+      "sha256": "47967d055530e7357088a08403115425643ec2cdfd6201ba8af0fbd7116c1539"
+    },
+    {
+      "path": "public/vendor/pdfjs/standard_fonts/LICENSE_FOXIT",
+      "bytes": 1553,
+      "sha256": "b578cdd2345840ada550bd12519533812320d5f1d21cf4c1c7e1b1b0a31c98b7"
+    },
+    {
+      "path": "public/vendor/pdfjs/standard_fonts/LICENSE_LIBERATION",
+      "bytes": 4414,
+      "sha256": "93fed46019c38bbe566b479d22148e2e8a1e85ada614accb0211c37b2c61c19b"
+    },
+    {
+      "path": "public/vendor/pdfjs/standard_fonts/LiberationSans-Bold.ttf",
+      "bytes": 137052,
+      "sha256": "361c61b82d575c5c35fd9157fda8b0194bcfcd0d88ea8521a4fb5dd53d33dddc"
+    },
+    {
+      "path": "public/vendor/pdfjs/standard_fonts/LiberationSans-BoldItalic.ttf",
+      "bytes": 135124,
+      "sha256": "a224075ac17495ad0a3af3bc0a419ac0704a8b3fd1095456201fb9b095fc281d"
+    },
+    {
+      "path": "public/vendor/pdfjs/standard_fonts/LiberationSans-Italic.ttf",
+      "bytes": 162036,
+      "sha256": "832b4406dbef23628800d3aaad21048534ac84d7e3ad955be83b8172ed8ef512"
+    },
+    {
+      "path": "public/vendor/pdfjs/standard_fonts/LiberationSans-Regular.ttf",
+      "bytes": 139512,
+      "sha256": "f8ace1f892b2bd9dc1792ba7f097fa7588f84fed48321480e04de5390828221f"
+    },
+    {
+      "path": "public/vendor/pdfjs/wasm/LICENSE_JBIG2",
+      "bytes": 12862,
+      "sha256": "9e66b7f1b934a28b37f3bc4dac97915de1674271e79a0a88182a18ed9731b4d1"
+    },
+    {
+      "path": "public/vendor/pdfjs/wasm/LICENSE_OPENJPEG",
+      "bytes": 2112,
+      "sha256": "a6af136f3e15038a666b61f376612a07d9a4e48cb7c01adbf3e33b3f14ab49b6"
+    },
+    {
+      "path": "public/vendor/pdfjs/wasm/LICENSE_PDFJS_JBIG2",
+      "bytes": 555,
+      "sha256": "aad3cce09842e00e9e11ad5e8fef8cc02fbc3a3768fe2f007443b9cee37aaee5"
+    },
+    {
+      "path": "public/vendor/pdfjs/wasm/LICENSE_PDFJS_OPENJPEG",
+      "bytes": 1285,
+      "sha256": "717fc62da03292dbb4dd0c8280bd4ce7bb8550dcf31d772bc93455fb50313425"
+    },
+    {
+      "path": "public/vendor/pdfjs/wasm/LICENSE_PDFJS_QCMS",
+      "bytes": 1285,
+      "sha256": "eb5104ca33552be007857a28351bc408f379ddd4bfacab1226b09c6d1e9fd7c4"
+    },
+    {
+      "path": "public/vendor/pdfjs/wasm/LICENSE_QCMS",
+      "bytes": 1121,
+      "sha256": "36d847ae882f6574ebc72f56a4f354e4f104fde4a584373496482e97d52d31bc"
+    },
+    {
+      "path": "public/vendor/pdfjs/wasm/jbig2.wasm",
+      "bytes": 105557,
+      "sha256": "df85117444f0f0150c5c9d0dd8eeab102d705217f838a9f6d46788b6d9b3d681"
+    },
+    {
+      "path": "public/vendor/pdfjs/wasm/openjpeg.wasm",
+      "bytes": 250009,
+      "sha256": "67b8e2b162da472e98cb48d3d32e3e38fff481b9b32ff4818e78bb248af88ab2"
+    },
+    {
+      "path": "public/vendor/pdfjs/wasm/openjpeg_nowasm_fallback.js",
+      "bytes": 451777,
+      "sha256": "07c3c3361827308741bc31c561b59e705ebb4d1e8efb84e4d24884e230dbb894"
+    },
+    {
+      "path": "public/vendor/pdfjs/wasm/qcms_bg.wasm",
+      "bytes": 94519,
+      "sha256": "6017eca5939cde1836e88e6d8cd27ae039246f206515ea4487bdfd0e3fb16e26"
+    },
+    {
+      "path": "public/vendor/qpdf.js",
+      "bytes": 52796,
+      "sha256": "0129e94930f34f9b3b371db00427f9ae81502bc8be4873f9ad114fc353ae306f"
+    },
+    {
+      "path": "public/vendor/qpdf.wasm",
+      "bytes": 1274647,
+      "sha256": "cbd81a244d622a39e3cf16f2e589a9a0d7cc51f588d35b3dd6b425a677cc3f99"
+    },
+    {
+      "path": "public/version-bridge.js",
+      "bytes": 69,
+      "sha256": "ab422991b589347420722ae07db0b3bee47c0a5e1f03e1a930f528d53fb4a636"
+    },
+    {
+      "path": "public/worker.js",
+      "bytes": 1166,
+      "sha256": "b068617d0c2a820187b814c577297cb4dbda10331ef63ff881504e179547d0be"
+    },
+    {
+      "path": "public/workspace.js",
+      "bytes": 609,
+      "sha256": "ece31b8d9c6cffd82a31a1c21203c70f06e03dd201bbf4490390736c21723dab"
+    },
+    {
+      "path": "scripts/build-android.cjs",
+      "bytes": 2486,
+      "sha256": "cd43173d760b9e08a3b20807ce240c5e7e4a298c26a22ca886aa6e8f75cec108"
+    },
+    {
+      "path": "scripts/collect-notices.cjs",
+      "bytes": 3429,
+      "sha256": "3157e013c71ad0e6d6ecd9bfc451f50077015ea2db91f76e9f08ad9433668777"
+    },
+    {
+      "path": "src/auth/auth-gate.js",
+      "bytes": 9420,
+      "sha256": "536de5624293123ad653d3fe868d36a312969aa70013406f2aef850e145f09bf"
+    },
+    {
+      "path": "src/auth/orundocs-auth-core.mjs",
+      "bytes": 6185,
+      "sha256": "5237f8aae74b3915750cb5fbc48647c9828b82b3c05840a74399ba1acda08601"
+    },
+    {
+      "path": "src/exam-scan-core.mjs",
+      "bytes": 24074,
+      "sha256": "7ca65b6e4f9879d3da6edf161348167effed6bfc15aefc2d0179af196bb058fa"
+    },
+    {
+      "path": "src/exam-scan-export.mjs",
+      "bytes": 6003,
+      "sha256": "fdcc4112d0af05423f3afeab181e50767049d57df0c520f1c5ab358093a00b71"
+    },
+    {
+      "path": "src/exam-scan-ui.js",
+      "bytes": 27426,
+      "sha256": "d8b2abe3828345723bd2dd6a435af7e640846aa636f1c7731c0510a5d9a2eed9"
+    },
+    {
+      "path": "src/exam-scan-worker.js",
+      "bytes": 2947,
+      "sha256": "93aac2297d07184b02c39b78e51caaf752cbeeb3374450918bfa89895c199de9"
+    },
+    {
+      "path": "src/file-limits.js",
+      "bytes": 561,
+      "sha256": "9ff3797dcf27d1a7b76bfda756abcd47d6cf1e9f93d26d7d7e940fa0aed04c00"
+    },
+    {
+      "path": "src/html-to-pdf.js",
+      "bytes": 9958,
+      "sha256": "c1babd2a683c902074fdb36931f22ebbe1beb0a42f57ecd45169a2b85f6a287b"
+    },
+    {
+      "path": "src/local-capabilities.js",
+      "bytes": 375,
+      "sha256": "0fa935d4894a40d5ba31b66dcbf920cf6e6a6169e1f61bc35b41dce9614f5af8"
+    },
+    {
+      "path": "src/native/local-office-export.mjs",
+      "bytes": 9549,
+      "sha256": "efaa4464e151750a1129a0d5caef58b2c122fcec2415243dc578e4027f77952b"
+    },
+    {
+      "path": "src/native/saf-save-adapter.mjs",
+      "bytes": 786,
+      "sha256": "ab9307ff5b0181d5d4b5be332516c69795d61af7f6064f60983be48ca13696c5"
+    },
+    {
+      "path": "src/native/saf-save-core.mjs",
+      "bytes": 2591,
+      "sha256": "3f5429c4d79d289da3cb0cb9d9620f5e8160d39e5d550945f7af914ec5d6e894"
+    },
+    {
+      "path": "src/native/save-bridge-core.mjs",
+      "bytes": 1094,
+      "sha256": "b87496aa929b6663d3856431a95c457a4d576e44d68fbb311c5d89e96535b0ce"
+    },
+    {
+      "path": "src/native/save-bridge.mjs",
+      "bytes": 819,
+      "sha256": "0565f01732d3ad461fd57a97e3c7fcdbd00ea2f437ea5d95401261ecfe5b6208"
+    },
+    {
+      "path": "src/native/share-bridge.mjs",
+      "bytes": 1488,
+      "sha256": "916a45e09573c496a8f603590bda9604369cdd6dbfe340b31c536a89bb672f3f"
+    },
+    {
+      "path": "src/pdf-ai-ops.js",
+      "bytes": 17648,
+      "sha256": "5ab23e81846b1352e5c370fd705e447a503001a70f25d87401e7ea4e2e989a8f"
+    },
+    {
+      "path": "src/pdf-convert-ops.js",
+      "bytes": 14978,
+      "sha256": "5431952b2fc37d266cddff1a60a69c6added8cf9cb6a7ea1dd4c811a0691a15e"
+    },
+    {
+      "path": "src/pdf-edit-ops.js",
+      "bytes": 21652,
+      "sha256": "0a44fd3b6695f7a85eb28a843e14c1f25365229de76fb54b9baacf83f2412bee"
+    },
+    {
+      "path": "src/pdf-ops.js",
+      "bytes": 15293,
+      "sha256": "f0e04cbd8672d01c9f2c28c71ab270ce8de695f60884a2f5ae228ce8ead1b5f5"
+    },
+    {
+      "path": "src/pdf-preview-base.js",
+      "bytes": 12255,
+      "sha256": "bccc91ca7c91798d0272f996dbe88fca4efc508e862201327900717e3e4facb9"
+    },
+    {
+      "path": "src/pdf-preview-model.mjs",
+      "bytes": 5666,
+      "sha256": "9a0d52f08cc985957bce1260ad13a32eb465a32adca1a14fd3d07c0c91e442a9"
+    },
+    {
+      "path": "src/pdf-preview-workspace.js",
+      "bytes": 33310,
+      "sha256": "c158b89401aa869110ba40dfafa4c05381c887e5d2bceb3edc713717555f1dd2"
+    },
+    {
+      "path": "src/pdf-preview.js",
+      "bytes": 55,
+      "sha256": "9aa86f4f85cfb2037f0f88cdb4958eb54c41e25f0c8fa5a5957787804097a37a"
+    },
+    {
+      "path": "src/tool-catalog.js",
+      "bytes": 5221,
+      "sha256": "824503418c38b54cae80e5b141e5d911268bfce33ba4b92fdb3b4d67d36655f0"
+    },
+    {
+      "path": "src/toolkit.js",
+      "bytes": 36711,
+      "sha256": "f1fb4a3f7c5d87b884cd7b42e02aa12679f98efecae98182fada4871a717b9e1"
+    }
+  ]
+}
