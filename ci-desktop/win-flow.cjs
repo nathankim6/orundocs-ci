@@ -61,6 +61,70 @@ async function diagnoseCleanup(target) {
   return D;
 }
 
+
+function listAll(dir) { const out = []; const walk = (d, rel) => { for (const e of fs.readdirSync(d, { withFileTypes: true })) { const r = rel ? rel + '/' + e.name : e.name; out.push(r + (e.isDirectory() ? '/' : '')); if (e.isDirectory()) walk(path.join(d, e.name), r); } }; try { walk(dir, ''); } catch (e) { out.push('error: ' + e.message); } return out; }
+let TARGET, EXE;
+async function doInstall(n, sp) {
+  const t0 = Date.now();
+  const setup = spawn(setupExe, [], { stdio: 'ignore', cwd: path.dirname(setupExe) });
+  setup.on('exit', c => L('setup exe exited', c));
+  const c1 = await ui('click', { processNames: ['OrunDocs'], textRegex: '이 계정에 설치할까요', buttonRegexes: ['^설치$'], keys: '{ENTER}', timeoutSec: 300, shotBefore: path.join(shots, sp + '1-install-confirm.png'), shotAfter: path.join(shots, sp + '2-installing.png'), shotOnTimeout: path.join(shots, sp + '1-timeout.png'), progressShot: path.join(shots, sp + '0-sfx-extracting.png'), progressShotAfterSec: 4 });
+  step(n + 'a-installer-confirm-dialog', c1.ok ? 'passed' : 'failed', { seconds: Math.round((Date.now() - t0) / 1000), ...c1, log: undefined }, [c1.shotBefore, c1.shotAfter, c1.shot]);
+  if (!c1.ok) return false;
+  const c2 = await ui('click', { processNames: ['OrunDocs'], textRegex: '설치가 완료되었습니다|설치 실패', buttonRegexes: ['^닫기$', '^(OK|확인)$'], keys: '{ESC}', timeoutSec: 1200, shotBefore: path.join(shots, sp + '3-install-complete.png'), shotAfter: path.join(shots, sp + '4-after-close.png'), shotOnTimeout: path.join(shots, sp + '3-timeout.png'), progressShot: path.join(shots, sp + '2b-install-progress.png'), progressShotAfterSec: 3 });
+  const installError = /설치 실패/.test(c2.text || '');
+  step(n + 'b-installer-complete-dialog', c2.ok && !installError ? 'passed' : 'failed', { installError, seconds: Math.round((Date.now() - t0) / 1000), ...c2, log: undefined }, [c2.shotBefore, c2.shotAfter, c2.shot]);
+  if (!c2.ok || installError) { await waitExit(setup, 60000); return installError ? 'install-error' : false; }
+  const se = await waitExit(setup, 180000);
+  step(n + 'c-setup-exit', se === 0 ? 'passed' : 'failed', `setup exe exit code=${se} after ${Math.round((Date.now() - t0) / 1000)}s; installed exe present=${fs.existsSync(EXE)}`);
+  return se === 0 && fs.existsSync(EXE) ? true : false;
+}
+async function doUninstall(n, sp, mode) {
+  const target = TARGET, exe = EXE;
+  const integ = ps(INTEGRATION);
+  const t1 = Date.now(); let un = null, how;
+  if (mode === 'start-menu-shortcut') {
+    const lnk = integ.shortcuts.find(s => /제거\.lnk$/.test(s.path));
+    how = { mode, shortcut: lnk };
+    const r = ps(`Start-Process -FilePath '${String(lnk && lnk.path).replace(/'/g, "''")}'; 'started' | ConvertTo-Json`); how.start = r;
+  } else {
+    const un0 = (integ.registry && integ.registry.UninstallString) || '';
+    const m = un0.match(/^"([^"]+)"\s*(.*)$/);
+    const cwd = path.join(process.env.SystemRoot, 'System32');
+    how = { mode, uninstallString: un0, cwd };
+    un = spawn(m ? m[1] : exe, m ? m[2].split(/\s+/).filter(Boolean) : ['--uninstall'], { stdio: 'ignore', cwd });
+  }
+  const u1 = await ui('click', { processNames: ['OrunDocs'], textRegex: '제거할까요', buttonRegexes: ['^제거$'], keys: '{TAB}{ENTER}', timeoutSec: 120, shotBefore: path.join(shots, sp + '0-uninstall-confirm.png'), shotOnTimeout: path.join(shots, sp + '0-timeout.png') });
+  step(n + 'a-uninstall-confirm-dialog', u1.ok ? 'passed' : 'failed', { ...how, ...u1, log: undefined }, [u1.shotBefore, u1.shot]);
+  const u2 = await ui('click', { processNames: ['OrunDocs'], textRegex: '앱 등록과 바로가기를 제거했습니다|제거 실패', buttonRegexes: ['^(OK|확인)$'], keys: '{ENTER}', timeoutSec: 120, shotBefore: path.join(shots, sp + '1-uninstall-done.png'), shotAfter: path.join(shots, sp + '2-after-uninstall.png'), shotOnTimeout: path.join(shots, sp + '1-timeout.png') });
+  const u2err = /제거 실패/.test(u2.text || '');
+  step(n + 'b-uninstall-done-dialog', u2.ok && !u2err ? 'passed' : 'failed', { appReportedError: u2err, ...u2, log: undefined }, [u2.shotBefore, u2.shotAfter, u2.shot]);
+  const ue = un ? await waitExit(un, 60000) : 'n/a (ShellExecute)';
+  let gone = false, zeroSince = null; const until = Date.now() + 300000; const timeline = []; let lastSample = 0;
+  while (Date.now() < until) {
+    if (!fs.existsSync(target)) { gone = true; break; }
+    const files = countFilesSafe(target);
+    if (files === 0) { zeroSince = zeroSince || Date.now(); if (Date.now() - zeroSince > 45000) break; } else zeroSince = null;
+    if (Date.now() - lastSample > 15000) {
+      lastSample = Date.now();
+      let tf = []; try { tf = fs.readdirSync(process.env.TEMP).filter(f => /-uninstall-/i.test(f)); } catch {}
+      const pr = ps(`@(Get-CimInstance Win32_Process -Filter "Name='powershell.exe'" | Where-Object { $_.CommandLine -match 'uninstall-' } | ForEach-Object { $p=Get-Process -Id $_.ProcessId -ErrorAction SilentlyContinue; @{pid=$_.ProcessId; cpu=[Math]::Round($p.TotalProcessorTime.TotalSeconds,2)} }) | ConvertTo-Json -Depth 3 -Compress`);
+      const smp = { s: Math.round((Date.now() - t1) / 1000), files, tempFiles: tf, cleanupProcs: pr.raw === '' ? [] : pr };
+      timeline.push(smp); L('UNINSTALL SAMPLE', n, smp);
+    }
+    await wait(1000);
+  }
+  const integ2 = ps(INTEGRATION);
+  const remaining = fs.existsSync(target) ? listAll(target) : [];
+  const filesLeft = fs.existsSync(target) ? countFilesSafe(target) : 0;
+  const integrationRemoved = !integ2.registry && integ2.shortcuts.every(s => !s.exists) && !integ2.startMenuDirExists;
+  const status = gone && integrationRemoved ? 'passed' : (filesLeft === 0 && integrationRemoved ? 'partial' : 'failed');
+  const D = status === 'passed' ? null : await diagnoseCleanup(target);
+  step(n + 'c-removed', status, { mode, uninstallerExit: ue, seconds: Math.round((Date.now() - t1) / 1000), installDirRemoved: gone, filesLeft, remainingEntries: remaining.slice(0, 60), registryAfter: integ2.registry, shortcutsAfter: integ2.shortcuts, startMenuDirExists: integ2.startMenuDirExists, userDataPreservedByDesign: fs.existsSync(path.join(process.env.APPDATA, 'OrunDocs')), timeline, diagnostics: D });
+  return status;
+}
+function countFilesSafe(d) { try { return countFiles(d); } catch { return -1; } }
+
 // The job step runs under pwsh 7, which prepends PowerShell-7 module paths to PSModulePath. Every process the
 // harness starts (setup -> app -> uninstaller -> Windows PowerShell 5.1 cleanup) would inherit that, which a user
 // launching from Explorer/Settings never has (it breaks module autoload, e.g. Get-FileHash, in 5.1).
@@ -80,6 +144,7 @@ const HASHTEST = target => `$t=Get-Date; $ok=0;$err=0;$e1=$null; foreach($f in @
   L('PSModulePath sanitized', S.psModulePath);
   const target = path.join(process.env.LOCALAPPDATA, 'Programs', 'OrunDocs');
   const exe = path.join(target, 'OrunDocs.exe');
+  TARGET = target; EXE = exe;
   S.installTarget = target;
   try {
     // 0. sha256 of the exact binary
@@ -89,20 +154,7 @@ const HASHTEST = target => `$t=Get-Date; $ok=0;$err=0;$e1=$null; foreach($f in @
     step('0-preconditions', fs.existsSync(target) ? 'failed' : 'passed', `install target pre-exists=${fs.existsSync(target)}; integration=${JSON.stringify(ps(INTEGRATION))}`);
 
     // 1. Run the setup exe as a user would (double-click equivalent), drive its dialogs.
-    const t0 = Date.now();
-    const setup = spawn(setupExe, [], { stdio: 'ignore', cwd: path.dirname(setupExe) });
-    setup.on('exit', c => L('setup exe exited', c));
-    S.setupPid = setup.pid;
-    const c1 = await ui('click', { processNames: ['OrunDocs'], textRegex: '이 계정에 설치할까요', buttonRegexes: ['^설치$'], keys: '{ENTER}', timeoutSec: 300, shotBefore: path.join(shots, 'w01-install-confirm.png'), shotAfter: path.join(shots, 'w02-installing.png'), shotOnTimeout: path.join(shots, 'w01-timeout.png'), progressShot: path.join(shots, 'w00-sfx-extracting.png'), progressShotAfterSec: 4 });
-    step('1a-installer-confirm-dialog', c1.ok ? 'passed' : 'failed', { seconds: Math.round((Date.now() - t0) / 1000), ...c1, log: undefined }, [c1.shotBefore, c1.shotAfter, c1.shot]);
-    S.uiLogs = { confirm: c1.log };
-    if (!c1.ok) throw Error('installer confirm dialog not handled');
-    const c2 = await ui('click', { processNames: ['OrunDocs'], textRegex: '설치가 완료되었습니다', buttonRegexes: ['^닫기$'], keys: '{ESC}', timeoutSec: 1200, shotBefore: path.join(shots, 'w03-install-complete.png'), shotAfter: path.join(shots, 'w04-after-close.png'), shotOnTimeout: path.join(shots, 'w03-timeout.png'), progressShot: path.join(shots, 'w02b-install-progress.png'), progressShotAfterSec: 3 });
-    S.uiLogs.complete = c2.log;
-    step('1b-installer-complete-dialog', c2.ok ? 'passed' : 'failed', { seconds: Math.round((Date.now() - t0) / 1000), ...c2, log: undefined }, [c2.shotBefore, c2.shotAfter, c2.shot]);
-    if (!c2.ok) throw Error('install-complete dialog not handled');
-    const se = await waitExit(setup, 180000);
-    step('1c-setup-exit', se === 0 ? 'passed' : 'failed', `setup exe exit code=${se} after ${Math.round((Date.now() - t0) / 1000)}s`);
+    if (!(await doInstall('1', 'w0'))) throw Error('install failed');
 
     // 2. Verify installed files, shortcuts, uninstall registration
     let info = null; try { info = JSON.parse(fs.readFileSync(path.join(target, 'install-info.json'), 'utf8')); } catch (e) { L('install-info read', e.message); }
@@ -139,43 +191,23 @@ $lock=@(); foreach($f in @('OrunDocs.exe','resources\\app\\desktop\\main.cjs')){
     L('PRE-UNINSTALL HASH CHECK', S.preUninstallHashCheck);
     save();
 
-    // 4. Uninstall the way Windows "Apps > Uninstall" does: run the registered UninstallString
-    const un0 = (integ.registry && integ.registry.UninstallString) || '';
-    const m = un0.match(/^"([^"]+)"\s*(.*)$/);
-    const unExe = m ? m[1] : exe, unArgs = m ? m[2].split(/\s+/).filter(Boolean) : ['--uninstall'];
-    const t1 = Date.now();
-    const un = spawn(unExe, unArgs, { stdio: 'ignore', cwd: target });
-    const u1 = await ui('click', { processNames: ['OrunDocs'], textRegex: '제거할까요', buttonRegexes: ['^제거$'], keys: '{TAB}{ENTER}', timeoutSec: 120, shotBefore: path.join(shots, 'w10-uninstall-confirm.png'), shotOnTimeout: path.join(shots, 'w10-timeout.png') });
-    step('4a-uninstall-confirm-dialog', u1.ok ? 'passed' : 'failed', { uninstallString: un0, ...u1, log: undefined }, [u1.shotBefore, u1.shot]);
-    S.uiLogs.uninstallConfirm = u1.log;
-    const u2 = await ui('click', { processNames: ['OrunDocs'], textRegex: '앱 등록과 바로가기를 제거했습니다|제거 실패', buttonRegexes: ['^(OK|확인)$'], keys: '{ENTER}', timeoutSec: 120, shotBefore: path.join(shots, 'w11-uninstall-done.png'), shotAfter: path.join(shots, 'w12-after-uninstall.png'), shotOnTimeout: path.join(shots, 'w11-timeout.png') });
-    S.uiLogs.uninstallDone = u2.log;
-    const u2err = /제거 실패/.test(u2.text || '');
-    step('4b-uninstall-done-dialog', u2.ok && !u2err ? 'passed' : 'failed', { appReportedError: u2err, ...u2, log: undefined }, [u2.shotBefore, u2.shotAfter, u2.shot]);
-    const ue = await waitExit(un, 60000);
-    let gone = false; const until = Date.now() + 600000; S.uninstallTimeline = []; let lastSample = 0;
-    while (Date.now() < until) {
-      if (!fs.existsSync(target)) { gone = true; break; }
-      if (Date.now() - lastSample > 15000) {
-        lastSample = Date.now();
-        const tmp = process.env.TEMP; let tf = []; try { tf = fs.readdirSync(tmp).filter(f => /-uninstall-/i.test(f)); } catch {}
-        const pr = ps(`@(Get-CimInstance Win32_Process -Filter "Name='powershell.exe'" | Where-Object { $_.CommandLine -match 'uninstall-' } | ForEach-Object { $p=Get-Process -Id $_.ProcessId -ErrorAction SilentlyContinue; @{pid=$_.ProcessId; cpu=[Math]::Round($p.TotalProcessorTime.TotalSeconds,2); threads=$p.Threads.Count} }) | ConvertTo-Json -Depth 3 -Compress`);
-        const smp = { s: Math.round((Date.now() - t1) / 1000), files: fs.existsSync(target) ? countFiles(target) : 0, tempFiles: tf, cleanupProcs: pr };
-        S.uninstallTimeline.push(smp); L('UNINSTALL SAMPLE', smp); save();
-      }
-      await wait(1000);
+    // 4a-c. Uninstall #1 from the Start-menu shortcut "OrunDocs 제거" (ShellExecute, shortcut's own working dir)
+    await doUninstall('4', 'w1', 'start-menu-shortcut');
+    // 5. Reinstall, then 6. uninstall #2 via the registered UninstallString (what Settings > Apps runs), neutral cwd
+    S.leftoverBeforeReinstall = fs.existsSync(TARGET) ? listAll(TARGET) : null;
+    let re = await doInstall('5', 'w2');
+    if (re === 'install-error' && S.leftoverBeforeReinstall) {
+      // Record that the leftover folder blocks a reinstall, then (harness) remove the empty folder and retry.
+      S.harnessRemovedLeftoverFolder = S.leftoverBeforeReinstall; fs.rmSync(TARGET, { recursive: true, force: true });
+      re = await doInstall('5r', 'w2r');
     }
-    const integ2 = ps(INTEGRATION);
-    const leftovers = fs.existsSync(target) ? countFiles(target) : 0;
-    const userData = path.join(process.env.APPDATA, 'OrunDocs');
-    const removedOk = gone && !integ2.registry && integ2.shortcuts.every(s => !s.exists) && !integ2.startMenuDirExists;
-    if (!removedOk) S.uninstallDiagnostics = await diagnoseCleanup(target);
-    step('4c-removed', removedOk ? 'passed' : 'failed', { uninstallerExit: ue, seconds: Math.round((Date.now() - t1) / 1000), installDirRemoved: gone, leftoverFiles: leftovers, registryAfter: integ2.registry, shortcutsAfter: integ2.shortcuts, startMenuDirExists: integ2.startMenuDirExists, userDataPreservedByDesign: fs.existsSync(userData) });
+    if (re === true) await doUninstall('6', 'w3', 'uninstallstring-system32-cwd');
+
   } catch (e) { S.fatal = String(e.stack || e); L('FATAL', S.fatal); }
   finally {
     for (const im of ['OrunDocs.exe', path.basename(setupExe)]) { const k = spawnSync('taskkill', ['/IM', im, '/T', '/F'], { encoding: 'utf8' }); if (k.status === 0) L('cleanup: killed leftover', im); }
     const v = Object.values(S.steps).map(s => s.status);
-    S.overall = S.fatal || v.includes('failed') ? 'failed' : 'passed';
+    S.overall = S.fatal || v.includes('failed') ? 'failed' : v.includes('partial') ? 'partial' : 'passed';
     S.finishedAt = new Date().toISOString(); save();
     console.log('WINDOWS OVERALL', S.overall);
     process.exit(0);
