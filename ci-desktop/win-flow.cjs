@@ -61,7 +61,23 @@ async function diagnoseCleanup(target) {
   return D;
 }
 
+// The job step runs under pwsh 7, which prepends PowerShell-7 module paths to PSModulePath. Every process the
+// harness starts (setup -> app -> uninstaller -> Windows PowerShell 5.1 cleanup) would inherit that, which a user
+// launching from Explorer/Settings never has (it breaks module autoload, e.g. Get-FileHash, in 5.1).
+// Restore an Explorer-like PSModulePath (Machine + User values from the registry) before launching anything.
+function sanitizePsModulePath() {
+  const before = process.env.PSModulePath || '';
+  const r = spawnSync('powershell.exe', ['-NoProfile', '-NonInteractive', '-Command', "[Environment]::GetEnvironmentVariable('PSModulePath','Machine'); '---'; [Environment]::GetEnvironmentVariable('PSModulePath','User')"], { encoding: 'utf8' });
+  const [mach, user] = (r.stdout || '').split('---').map(x => x.trim());
+  const after = [user, mach].filter(Boolean).join(';');
+  if (after) process.env.PSModulePath = after;
+  return { before, after: process.env.PSModulePath };
+}
+const HASHTEST = target => `$t=Get-Date; $ok=0;$err=0;$e1=$null; foreach($f in @(Get-ChildItem -LiteralPath '${target.replace(/'/g, "''")}' -File | Select-Object -First 5)){ try{ $null=(Get-FileHash -LiteralPath $f.FullName -Algorithm SHA256).Hash; $ok++ }catch{ $err++; if(-not $e1){$e1=$_.Exception.Message} } }; @{ok=$ok;err=$err;firstError=$e1;seconds=[Math]::Round(((Get-Date)-$t).TotalSeconds,1)} | ConvertTo-Json -Compress`;
+
 (async () => {
+  S.psModulePath = sanitizePsModulePath();
+  L('PSModulePath sanitized', S.psModulePath);
   const target = path.join(process.env.LOCALAPPDATA, 'Programs', 'OrunDocs');
   const exe = path.join(target, 'OrunDocs.exe');
   S.installTarget = target;
@@ -112,6 +128,7 @@ async function diagnoseCleanup(target) {
     step('3-e2e-installed-app', e2e.overall === 'passed' ? 'passed' : 'failed', `overall=${e2e.overall}; gracefulExit=${e2e.gracefulExit}; exitCode=${e2e.exitCode}; see e2e-result.json`);
     await wait(3000);
 
+    { const clean = process.env.PSModulePath; process.env.PSModulePath = S.psModulePath.before; S.getFileHashUnderPwshInheritedEnv = ps(HASHTEST(target)); process.env.PSModulePath = clean; S.getFileHashUnderExplorerLikeEnv = ps(HASHTEST(target)); L('Get-FileHash env comparison', { pwshInherited: S.getFileHashUnderPwshInheritedEnv, explorerLike: S.getFileHashUnderExplorerLikeEnv }); }
     // 3b. Read-only: what the cleanup script's hash-then-delete loop will see (PowerShell 5.1 Get-FileHash vs install-info)
     S.preUninstallHashCheck = ps(`$t=Get-Date; $target='${target.replace(/'/g, "''")}'
 $info=Get-Content -LiteralPath (Join-Path $target 'install-info.json') -Raw | ConvertFrom-Json
