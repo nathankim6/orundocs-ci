@@ -62,7 +62,7 @@ jobs:
           P="$APP/Info.plist"
           V="$RUNNER_TEMP/out/verify.txt"
           {
-            for k in CFBundleIdentifier CFBundleShortVersionString CFBundleVersion CFBundleDisplayName NSCameraUsageDescription NSPhotoLibraryUsageDescription MinimumOSVersion; do
+            for k in CFBundleIdentifier CFBundleName CFBundleShortVersionString CFBundleVersion CFBundleDisplayName NSCameraUsageDescription NSPhotoLibraryUsageDescription MinimumOSVersion; do
               echo "$k = $(/usr/libexec/PlistBuddy -c "Print :$k" "$P")"
             done
             echo "UIDeviceFamily = $(/usr/libexec/PlistBuddy -c 'Print :UIDeviceFamily' "$P" | tr -d '\n ')"
@@ -158,6 +158,7 @@ jobs:
       - name: UI tests on iPhone and iPad
         working-directory: ${{ runner.temp }}/od/ios/App
         run: |
+          set +e
           set -u
           if [ -z "${TEST_RUNNER_OD_TEST_RT:-}" ]; then echo "::warning::OD_TEST_REFRESH_TOKEN secret missing"; fi
           run_dev() {
