@@ -263,15 +263,16 @@ final class OrunUITests: XCTestCase {
         dump("d8-export-sheet", app)
         let local = waitAny([any(app, "label == 'On My iPhone'"), any(app, "label == 'On My iPad'"),
                              any(app, "label == '나의 iPhone'"), any(app, "label == '나의 iPad'")], timeout: 5)
-        if let local = local, local.isHittable { local.tap(); Thread.sleep(forTimeInterval: 2) }
+        var localLabel = local.map { $0.exists ? $0.label : "gone" } ?? "none"
+        if let local = local, local.exists, local.isHittable { local.tap(); Thread.sleep(forTimeInterval: 2) }
         shot("d9-export-location")
         dump("d9-export-location", app)
         if local == nil, app.buttons["Browse"].exists {
             app.buttons["Browse"].tap(); Thread.sleep(forTimeInterval: 2)
-            for l in ["On My iPhone", "On My iPad"] where any(app, "label == '\(l)'").exists { any(app, "label == '\(l)'").tap(); Thread.sleep(forTimeInterval: 2); break }
+            for l in ["On My iPhone", "On My iPad"] where any(app, "label == '\(l)'").exists { any(app, "label == '\(l)'").tap(); localLabel = l; Thread.sleep(forTimeInterval: 2); break }
         }
         let confirm = waitAny([app.buttons["Save"], app.buttons["Move"], app.buttons["Done"], app.buttons["Copy"], app.buttons["Export"]], timeout: 5)
-        let confirmLabel = confirm?.label ?? "none"
+        let confirmLabel = (confirm?.exists ?? false) ? confirm!.label : "none"
         if let c = confirm, c.isEnabled { c.tap() }
         let saved = any(app, "label CONTAINS '저장을 완료'")
         let savedOk = saved.waitForExistence(timeout: 30)
@@ -279,7 +280,7 @@ final class OrunUITests: XCTestCase {
         if savedOk { reveal(saved) }
         shot("d10-saved")
         if !savedOk { dump("d10-saved", app) }
-        record("d8-save-files", savedOk, "location=\(local?.label ?? "none") confirm=\(confirmLabel) status=\(savedOk ? saved.label : "")")
+        record("d8-save-files", savedOk, "location=\(localLabel) confirm=\(confirmLabel) status=\(savedOk && saved.exists ? saved.label : "")")
         if !savedOk {
             // close whatever sheet is still up so share can be attempted
             if app.buttons["Cancel"].exists { app.buttons["Cancel"].tap() }
@@ -299,7 +300,8 @@ final class OrunUITests: XCTestCase {
         Thread.sleep(forTimeInterval: 3)
         shot("d11-share-sheet")
         dump("d11-share-sheet", app)
-        record("d11-share-sheet", sheet != nil, "found=\(sheet?.identifier ?? "") \(sheet?.label ?? "")")
+        let sheetInfo = (sheet?.exists ?? false) ? "\(sheet!.identifier) \(sheet!.label)" : (sheet == nil ? "none" : "gone")
+        record("d11-share-sheet", sheet != nil, "found=\(sheetInfo)")
         if app.buttons["Close"].exists { app.buttons["Close"].tap() }
         Thread.sleep(forTimeInterval: 2)
         shot("d12-after-share")
