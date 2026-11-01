@@ -3,8 +3,8 @@
   "version": "4.0.0",
   "versionCode": 4000001,
   "package": "com.orundocs.app",
-  "sourceSha256": "f70fe8330460d5d8e46e8958e390319d0f916a7aac91e5ce9064d7dd2b42c309",
-  "sourceBytes": 9180437,
+  "sourceSha256": "fb7a1381ca8045cb69829afff84e5466e9e53ebd5c6351baf6813641b6d18ac3",
+  "sourceBytes": 9180683,
   "files": [
     {
       "path": "LICENSE",
@@ -63,8 +63,8 @@
     },
     {
       "path": "android/app/src/androidTest/java/com/pdfatelier/android/NativeWebViewSmokeTest.java",
-      "bytes": 26811,
-      "sha256": "6cd3a44d1936968fb62bd397351d91b5b3c13b1f38ffb7119bb1111a7529234d"
+      "bytes": 26855,
+      "sha256": "d9a3f691553fe166d67559eede27ba2bf195e07e2730d7b910bac2d3d933727a"
     },
     {
       "path": "android/app/src/main/AndroidManifest.xml",
@@ -373,13 +373,13 @@
     },
     {
       "path": "package-lock.json",
-      "bytes": 154204,
-      "sha256": "cedb7e170e663fd5e30247642c00270791e4dee91c82d889e0eef586e19fc70f"
+      "bytes": 154602,
+      "sha256": "f34c9a7621d5809851900171ab2df971affa2c0882034b454f20a4b34a8033b3"
     },
     {
       "path": "package.json",
-      "bytes": 741,
-      "sha256": "9b2150c9b2410393f09f5d57bc2d0a536c224e701648a177c111f9292bd2bab8"
+      "bytes": 772,
+      "sha256": "f33de751a20fe94bd49ca1372b87c60409bf5735675f2b3b431d17228b278fce"
     },
     {
       "path": "public/android.css",
@@ -1528,8 +1528,8 @@
     },
     {
       "path": "src/exam-scan-ui.js",
-      "bytes": 27426,
-      "sha256": "d8b2abe3828345723bd2dd6a435af7e640846aa636f1c7731c0510a5d9a2eed9"
+      "bytes": 27448,
+      "sha256": "94d4d724622cf39e7ef411108d889ce75c12bf83d57c437ec2bb97be638a9796"
     },
     {
       "path": "src/exam-scan-worker.js",
@@ -1573,13 +1573,13 @@
     },
     {
       "path": "src/native/save-bridge.mjs",
-      "bytes": 819,
-      "sha256": "0565f01732d3ad461fd57a97e3c7fcdbd00ea2f437ea5d95401261ecfe5b6208"
+      "bytes": 920,
+      "sha256": "2610a2c9ccdb4c0fe99a1127ab87108faac1961640402ebfdb7aa620ec76e22b"
     },
     {
       "path": "src/native/share-bridge.mjs",
-      "bytes": 1488,
-      "sha256": "916a45e09573c496a8f603590bda9604369cdd6dbfe340b31c536a89bb672f3f"
+      "bytes": 1503,
+      "sha256": "2a839bf9a69eefb34904438fe1d50522755351abf51494c4c28166ed743e1622"
     },
     {
       "path": "src/pdf-ai-ops.js",
@@ -1628,8 +1628,8 @@
     },
     {
       "path": "src/toolkit.js",
-      "bytes": 36711,
-      "sha256": "f1fb4a3f7c5d87b884cd7b42e02aa12679f98efecae98182fada4871a717b9e1"
+      "bytes": 36765,
+      "sha256": "534f7f5419b7cfed3b2ae6aca20320493bf6ec903461841ef9da1db344394eea"
     }
   ]
 }
