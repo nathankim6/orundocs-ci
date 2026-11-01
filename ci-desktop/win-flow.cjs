@@ -50,7 +50,7 @@ async function diagnoseCleanup(target) {
   try {
     const tmp = process.env.TEMP;
     D.tempScripts = fs.readdirSync(tmp).filter(f => /^OrunDocs-uninstall-.*\.ps1$/i.test(f)).map(f => ({ f, bytes: fs.statSync(path.join(tmp, f)).size }));
-    D.readyFiles = fs.readdirSync(tmp).filter(f => /^OrunDocs-uninstall-.*\.(ready|go)$/i.test(f));
+    D.readyFiles = fs.readdirSync(tmp).filter(f => /-uninstall-.*\.(ready|go)$/i.test(f));
     D.powershellProcs = ps(`@(Get-CimInstance Win32_Process -Filter "Name='powershell.exe'" | ForEach-Object { @{pid=$_.ProcessId; parent=$_.ParentProcessId; cmd=$_.CommandLine} }) | ConvertTo-Json -Depth 3 -Compress`);
     D.orunProcs = ps(`@(Get-CimInstance Win32_Process -Filter "Name='OrunDocs.exe'" | ForEach-Object { @{pid=$_.ProcessId; cmd=$_.CommandLine} }) | ConvertTo-Json -Depth 3 -Compress`);
     D.remainingFiles = fs.existsSync(target) ? countFiles(target) : 0;
@@ -94,8 +94,8 @@ async function diagnoseCleanup(target) {
     S.installedIntegration = integ;
     const files = fs.existsSync(target) ? countFiles(target) : 0;
     const lnkOk = Array.isArray(integ.shortcuts) && integ.shortcuts.every(s => s.exists && s.target && s.target.toLowerCase() === exe.toLowerCase()) && /--uninstall/.test(integ.shortcuts[2].args || '');
-    const regOk = integ.registry && integ.registry.DisplayVersion === '3.5.0' && /--uninstall/.test(integ.registry.UninstallString || '') && (integ.registry.InstallLocation || '').toLowerCase() === target.toLowerCase();
-    const filesOk = fs.existsSync(exe) && fs.existsSync(path.join(target, 'resources', 'app', 'desktop', 'main.cjs')) && info && info.version === '3.5.0' && info.files.length === files - 2;
+    const regOk = integ.registry && integ.registry.DisplayVersion === '4.0.0' && /--uninstall/.test(integ.registry.UninstallString || '') && (integ.registry.InstallLocation || '').toLowerCase() === target.toLowerCase();
+    const filesOk = fs.existsSync(exe) && fs.existsSync(path.join(target, 'resources', 'app', 'desktop', 'main.cjs')) && info && info.version === '4.0.0' && info.files.length === files - 2;
     step('2-installed-files-shortcuts-registry', filesOk && lnkOk && regOk ? 'passed' : 'failed', { filesOk, lnkOk, regOk, filesOnDisk: files, installInfo: info && { version: info.version, files: info.files.length, byteSize: info.byteSize, installId: info.installId, installedAt: info.installedAt }, registry: integ.registry, shortcuts: integ.shortcuts, pythonExe: fs.existsSync(path.join(target, 'resources', 'runtime', 'python-export', 'python.exe')) });
     save();
 
@@ -112,6 +112,16 @@ async function diagnoseCleanup(target) {
     step('3-e2e-installed-app', e2e.overall === 'passed' ? 'passed' : 'failed', `overall=${e2e.overall}; gracefulExit=${e2e.gracefulExit}; exitCode=${e2e.exitCode}; see e2e-result.json`);
     await wait(3000);
 
+    // 3b. Read-only: what the cleanup script's hash-then-delete loop will see (PowerShell 5.1 Get-FileHash vs install-info)
+    S.preUninstallHashCheck = ps(`$t=Get-Date; $target='${target.replace(/'/g, "''")}'
+$info=Get-Content -LiteralPath (Join-Path $target 'install-info.json') -Raw | ConvertFrom-Json
+$mis=0;$err=0;$ok=0;$errs=@()
+foreach($r in $info.files){ $p=[IO.Path]::GetFullPath((Join-Path $target ([string]$r))); try{ $h=(Get-FileHash -LiteralPath $p -Algorithm SHA256).Hash; if($h -eq $info.hashes.PSObject.Properties[[string]$r].Value){$ok++}else{$mis++} }catch{ $err++; if($errs.Count -lt 5){$errs+=$_.Exception.Message} } }
+$lock=@(); foreach($f in @('OrunDocs.exe','resources\\app\\desktop\\main.cjs')){ try{ $fsx=[IO.File]::Open((Join-Path $target $f),'Open','ReadWrite','None'); $fsx.Close(); $lock+=@{f=$f;exclusiveOpen='ok'} }catch{ $lock+=@{f=$f;exclusiveOpen=$_.Exception.Message} } }
+@{ok=$ok;mismatch=$mis;errors=$err;errSamples=$errs;seconds=[Math]::Round(((Get-Date)-$t).TotalSeconds,1);lockTest=$lock} | ConvertTo-Json -Depth 4 -Compress`);
+    L('PRE-UNINSTALL HASH CHECK', S.preUninstallHashCheck);
+    save();
+
     // 4. Uninstall the way Windows "Apps > Uninstall" does: run the registered UninstallString
     const un0 = (integ.registry && integ.registry.UninstallString) || '';
     const m = un0.match(/^"([^"]+)"\s*(.*)$/);
@@ -126,8 +136,18 @@ async function diagnoseCleanup(target) {
     const u2err = /제거 실패/.test(u2.text || '');
     step('4b-uninstall-done-dialog', u2.ok && !u2err ? 'passed' : 'failed', { appReportedError: u2err, ...u2, log: undefined }, [u2.shotBefore, u2.shotAfter, u2.shot]);
     const ue = await waitExit(un, 60000);
-    let gone = false; const until = Date.now() + 180000;
-    while (Date.now() < until) { if (!fs.existsSync(target)) { gone = true; break; } await wait(1000); }
+    let gone = false; const until = Date.now() + 600000; S.uninstallTimeline = []; let lastSample = 0;
+    while (Date.now() < until) {
+      if (!fs.existsSync(target)) { gone = true; break; }
+      if (Date.now() - lastSample > 15000) {
+        lastSample = Date.now();
+        const tmp = process.env.TEMP; let tf = []; try { tf = fs.readdirSync(tmp).filter(f => /-uninstall-/i.test(f)); } catch {}
+        const pr = ps(`@(Get-CimInstance Win32_Process -Filter "Name='powershell.exe'" | Where-Object { $_.CommandLine -match 'uninstall-' } | ForEach-Object { $p=Get-Process -Id $_.ProcessId -ErrorAction SilentlyContinue; @{pid=$_.ProcessId; cpu=[Math]::Round($p.TotalProcessorTime.TotalSeconds,2); threads=$p.Threads.Count} }) | ConvertTo-Json -Depth 3 -Compress`);
+        const smp = { s: Math.round((Date.now() - t1) / 1000), files: fs.existsSync(target) ? countFiles(target) : 0, tempFiles: tf, cleanupProcs: pr };
+        S.uninstallTimeline.push(smp); L('UNINSTALL SAMPLE', smp); save();
+      }
+      await wait(1000);
+    }
     const integ2 = ps(INTEGRATION);
     const leftovers = fs.existsSync(target) ? countFiles(target) : 0;
     const userData = path.join(process.env.APPDATA, 'OrunDocs');
