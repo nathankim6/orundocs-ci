@@ -8,7 +8,7 @@ const { spawn, spawnSync } = require('node:child_process');
 const { runE2E } = require('./e2e.cjs');
 
 const [setupExe, outDir] = process.argv.slice(2);
-const EXPECT = 'cd49b295f6b1ba5d9de28e96f1cb45b58a29e37ddc95c5974ca7f72a420cadcb';
+const EXPECT = 'bf21ac1aca8fa2305bcde72b9bc53fa298d5b57a9078057bc28abc6ae83bc22d';
 const shots = path.join(outDir, 'shots');
 fs.mkdirSync(shots, { recursive: true });
 const S = { platform: 'windows', setupExe, steps: {}, startedAt: new Date().toISOString() };

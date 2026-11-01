@@ -170,10 +170,10 @@ async function runE2E(o) {
       const g = await ev(() => { const gate = document.getElementById('od-gate'), btn = document.querySelector('#od-gate .od-google'), sb = document.querySelector('.app-sidebar'), main = document.getElementById('app-main');
         return { locked: document.documentElement.classList.contains('od-locked'), gateHidden: gate ? gate.hidden : null, gateVisible: gate ? getComputedStyle(gate).display !== 'none' && gate.getBoundingClientRect().width > 0 : false,
           msg: document.querySelector('#od-gate .od-msg')?.textContent || '', button: btn ? btn.textContent : null, buttonVisible: btn ? !btn.hidden && btn.getBoundingClientRect().width > 0 : false,
-          sidebarVisibility: sb ? getComputedStyle(sb).visibility : null, mainVisibility: main ? getComputedStyle(main).visibility : null, accountHidden: document.getElementById('od-account')?.hidden }; });
+          cardText: (document.querySelector('#od-gate .od-card')?.textContent || '').replace(/\s+/g, ' ').trim(), subtitleRemoved: !(document.querySelector('#od-gate .od-card')?.textContent || '').includes('문서 작업 공간'), sidebarVisibility: sb ? getComputedStyle(sb).visibility : null, mainVisibility: main ? getComputedStyle(main).visibility : null, accountHidden: document.getElementById('od-account')?.hidden }; });
       R.gate = g;
       const s = await shot('00a-signin-gate.png');
-      const ok = g.locked && g.gateHidden === false && g.gateVisible && /Google 계정으로 로그인/.test(g.button || '') && g.buttonVisible && /로그인해 주세요/.test(g.msg) && g.sidebarVisibility === 'hidden';
+      const ok = g.locked && g.gateHidden === false && g.gateVisible && /Google 계정으로 로그인/.test(g.button || '') && g.buttonVisible && /로그인해 주세요/.test(g.msg) && g.sidebarVisibility === 'hidden' && g.subtitleRemoved;
       setCheck('G1-signin-gate-shown-workspace-hidden', ok ? 'passed' : 'failed', JSON.stringify(g), [s]);
     } catch (e) { setCheck('G1-signin-gate-shown-workspace-hidden', 'failed', 'error: ' + e.message, [await shot('00a-gate-error.png')]); }
 
