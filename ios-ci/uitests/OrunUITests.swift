@@ -428,13 +428,25 @@ final class OrunUITests: XCTestCase {
             let cell = app.cells.matching(NSPredicate(format: "label CONTAINS 'preview-six-pages'")).firstMatch
             let f = any(app, fileQ)
             if cell.exists || f.exists {
-                for t in 0..<3 {
-                    if cell.exists && cell.isHittable { cell.tap() }
-                    else if f.exists { f.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: t == 0 ? -2.5 : 0.5)).tap() }
-                    Thread.sleep(forTimeInterval: 2)
+                let other = app.cells.matching(NSPredicate(format: "label CONTAINS 'exam-photo'")).firstMatch
+                let pickerOpen = { app.cells.matching(NSPredicate(format: "label CONTAINS 'preview-six-pages'")).firstMatch.exists }
+                let tries: [(String, () -> Void)] = [
+                    ("tap", { cell.tap() }),
+                    ("thumbnail", { cell.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.3)).tap() }),
+                    ("doubleTap", { cell.doubleTap() }),
+                    ("label", { f.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.5)).tap() }),
+                    ("exam-pdf", { if other.exists { other.tap() } }),
+                ]
+                for (name, act) in tries {
+                    act(); Thread.sleep(forTimeInterval: 2.5)
                     if app.buttons["Open"].exists && app.buttons["Open"].isEnabled { app.buttons["Open"].tap(); Thread.sleep(forTimeInterval: 1.5) }
-                    if !any(app, fileQ).exists { fileTapped = true; break }
-                    print("ODNOTE: picker still open after file tap \(t + 1)")
+                    if !pickerOpen() { fileTapped = true; print("ODNOTE: picker accepted file via \(name)"); break }
+                    print("ODNOTE: picker still open after \(name)")
+                }
+                if !fileTapped {
+                    shot("e1-picker-stuck")
+                    for b in [app.buttons["Cancel"], app.buttons["Close"]] where b.exists && b.isHittable { b.tap(); Thread.sleep(forTimeInterval: 2); break }
+                    if pickerOpen(), let x = [any(app, "label == 'Close' OR identifier == 'Close'"), any(app, "label == '닫기'")].first(where: { $0.exists && $0.isHittable }) { x.tap(); Thread.sleep(forTimeInterval: 2) }
                 }
                 break
             }
