@@ -256,7 +256,9 @@ jobs:
                               # XCTest echoes typed text ("Type '...' into"): drop those lines entirely
                               s = b"\n".join(l for l in s.split(b"\n") if b"Type '" not in l and b"typeText" not in l)
                           for tok in toks:
-                              for v in {tok, tok.lower()}:
+                              vs = {tok, tok.lower()}
+                              if "@" in tok and len(tok.split("@")[0]) >= 4: vs.add(tok.split("@")[0]); vs.add(tok.split("@")[0].lower())
+                              for v in sorted(vs, key=len, reverse=True):
                                   s = s.replace(v.encode(), b"***")
                           if s != o:
                               open(p, "wb").write(s); n += 1
