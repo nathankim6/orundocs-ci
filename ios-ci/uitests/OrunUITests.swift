@@ -258,7 +258,18 @@ final class OrunUITests: XCTestCase {
         var unlocked = false
         while Date() < end {
             if chip.exists { unlocked = true; break }
-            // a system "Save Password?" prompt may appear; it is not tapped (tapping it races with its auto-dismissal)
+            // The "Save Password?" alert (shown inside the web sheet) blocks the callback until dismissed.
+            // Dismiss it with a coordinate tap on "Not Now" (coordinate taps cannot fail on a vanished element).
+            let savePw = app.alerts.matching(NSPredicate(format: "label CONTAINS 'Save Password'")).firstMatch
+            if savePw.exists {
+                let notNow = savePw.buttons["Not Now"]
+                if notNow.exists {
+                    let f = notNow.frame
+                    if !f.isEmpty { app.coordinate(withNormalizedOffset: .zero).withOffset(CGVector(dx: f.midX, dy: f.midY)).tap() }
+                    print("ODNOTE: dismissed Save Password prompt")
+                    Thread.sleep(forTimeInterval: 2)
+                }
+            }
             Thread.sleep(forTimeInterval: 1)
         }
         Thread.sleep(forTimeInterval: 1.5)
@@ -439,6 +450,7 @@ final class OrunUITests: XCTestCase {
                 let pickerOpen = { app.cells.matching(NSPredicate(format: "label CONTAINS 'preview-six-pages'")).firstMatch.exists }
                 let tries: [(String, () -> Void)] = [
                     ("tap", { cell.tap() }),
+                    ("tap-again", { Thread.sleep(forTimeInterval: 2); if cell.exists { cell.tap() } }),
                     ("thumbnail", { cell.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.3)).tap() }),
                     ("doubleTap", { cell.doubleTap() }),
                     ("label", { f.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.5)).tap() }),
