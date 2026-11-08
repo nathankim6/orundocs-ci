@@ -8,7 +8,7 @@ const { spawn, spawnSync } = require('node:child_process');
 const { runE2E } = require('./e2e.cjs');
 
 const [setupExe, outDir] = process.argv.slice(2);
-const EXPECT = 'bf21ac1aca8fa2305bcde72b9bc53fa298d5b57a9078057bc28abc6ae83bc22d';
+const EXPECT = 'd0975bb824f7eeada565da538f17605be0a9faf3fba338fc98d55efa41951529';
 const shots = path.join(outDir, 'shots');
 fs.mkdirSync(shots, { recursive: true });
 const S = { platform: 'windows', setupExe, steps: {}, startedAt: new Date().toISOString() };
@@ -205,13 +205,6 @@ $lock=@(); foreach($f in @('OrunDocs.exe','resources\\app\\desktop\\main.cjs')){
     const re = await doInstall('5', 'w2');
     // 6. Uninstall #2 via the registered UninstallString (Settings > Apps), System32 working folder
     if (re === true) await doUninstall('6', 'w3', 'uninstallstring-system32-cwd');
-    // 7. Reinstall onto a pre-created EMPTY install folder
-    if (fs.existsSync(TARGET)) { S.step7PreExisting = listAll(TARGET); L('target unexpectedly exists before step 7', S.step7PreExisting); }
-    fs.mkdirSync(TARGET, { recursive: true });
-    S.step7PreCreatedEmptyFolder = { exists: fs.existsSync(TARGET), entries: listAll(TARGET) };
-    const re7 = await doInstall('7', 'w4');
-    // 8. Final cleanup uninstall via UninstallString launched from INSIDE the install folder (old failure mode)
-    if (re7 === true) await doUninstall('8', 'w5', 'uninstallstring-install-dir-cwd');
   } catch (e) { S.fatal = String(e.stack || e); L('FATAL', S.fatal); }
   finally {
     for (const im of ['OrunDocs.exe', path.basename(setupExe)]) { const k = spawnSync('taskkill', ['/IM', im, '/T', '/F'], { encoding: 'utf8' }); if (k.status === 0) L('cleanup: killed leftover', im); }

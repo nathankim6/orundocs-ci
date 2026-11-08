@@ -61,7 +61,19 @@ async function runE2E(o) {
   const R = { label: o.label, exe: o.exe, platform: process.platform, saveMode: o.saveMode, checks: {}, saves: {}, events: { crash: 0, pageErrors: [], consoleErrors: [], playwrightDownloads: [] }, startedAt: new Date().toISOString() };
   const setCheck = (id, status, detail, evidence = []) => { R.checks[id] = { status, detail, evidence: evidence.filter(Boolean) }; L('CHECK', id, status, detail); };
   let child, browser, page, cdpHung = false;
-  const TOKEN = process.env.OD_TEST_REFRESH_TOKEN || '';
+  let TOKEN = '', tokenSource = 'none';
+  const EXPECT_EMAIL = (process.env.OD_REVIEW_EMAIL || '').trim().toLowerCase();
+  async function acquireToken() {
+    if (process.env.OD_REVIEW_EMAIL && process.env.OD_REVIEW_PASSWORD) {
+      try {
+        const r = await fetch('https://identitytoolkit.googleapis.com/v1/accounts:signInWithPassword?key=AIzaSyCtvGwVSwR0YoxPwNiVBLAWTDkyr-hDh3c', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ email: process.env.OD_REVIEW_EMAIL, password: process.env.OD_REVIEW_PASSWORD, returnSecureToken: true }) });
+        const j = await r.json();
+        if (r.ok && j.refreshToken) { TOKEN = j.refreshToken; tokenSource = 'signInWithPassword(OD_REVIEW_EMAIL)'; process.stdout.write('::add-mask::' + TOKEN + '\n'); if (j.idToken) process.stdout.write('::add-mask::' + j.idToken + '\n'); }
+        else tokenSource = 'signInWithPassword failed: HTTP ' + r.status + ' ' + (j.error && j.error.message || '');
+      } catch (e) { tokenSource = 'signInWithPassword error: ' + e.message; }
+    } else if (process.env.OD_TEST_REFRESH_TOKEN) { TOKEN = process.env.OD_TEST_REFRESH_TOKEN; tokenSource = 'OD_TEST_REFRESH_TOKEN'; }
+    R.tokenSource = tokenSource; L('token source', tokenSource, 'present=' + !!TOKEN);
+  }
   const shot = async name => { const f = path.join(shotsDir, name); try { await withTimeout(page.screenshot({ path: f }), 20000, 'screenshot'); return path.relative(out, f).split(path.sep).join('/'); } catch (e) { L('screenshot failed', name, e.message); return null; } };
   const ev = (fn, arg, ms = 30000) => withTimeout(page.evaluate(fn, arg), ms, 'page.evaluate');
 
@@ -108,7 +120,8 @@ async function runE2E(o) {
     const acct = (last && last.account) || '';
     // Privacy (public repo): never store the full address; record a mask + sha256 for comparison.
     try { await ev(() => { const c = document.getElementById('od-account'); if (c) c.style.filter = 'blur(5px)'; return true; }); } catch {}
-    return { unlocked: !!last && last.locked === false, accountHasAt: /@/.test(acct), accountMasked: mask(acct.replace(/^오프라인 · /, '')), accountSha256: acct ? sha256(Buffer.from(acct.replace(/^오프라인 · /, '').trim())) : null, offlineMode: /^오프라인/.test(acct), gateMsgIfLocked: last && last.locked ? last.msg : null, ms: Date.now() - t0 };
+    const plain = acct.replace(/^오프라인 · /, '').trim().toLowerCase();
+    return { matchesExpectedAccount: EXPECT_EMAIL ? plain === EXPECT_EMAIL : null, unlocked: !!last && last.locked === false, accountHasAt: /@/.test(acct), accountMasked: mask(acct.replace(/^오프라인 · /, '')), accountSha256: acct ? sha256(Buffer.from(acct.replace(/^오프라인 · /, '').trim())) : null, offlineMode: /^오프라인/.test(acct), gateMsgIfLocked: last && last.locked ? last.msg : null, ms: Date.now() - t0 };
   }
   async function startApp(label) {
     child = spawn(o.exe, ['--remote-debugging-port=' + o.port, '--remote-debugging-address=127.0.0.1'], { stdio: ['ignore', 'pipe', 'pipe'], cwd: path.dirname(o.exe) });
@@ -161,6 +174,7 @@ async function runE2E(o) {
   async function openCard(title) { await home(); await page.getByRole('button', { name: title + ' 도구 열기', exact: true }).click(); }
 
   try {
+    await acquireToken();
     await startApp('first launch');
 
     // ---- Check G1: sign-in gate shown, workspace hidden
@@ -173,7 +187,7 @@ async function runE2E(o) {
           cardText: (document.querySelector('#od-gate .od-card')?.textContent || '').replace(/\s+/g, ' ').trim(), subtitleRemoved: !(document.querySelector('#od-gate .od-card')?.textContent || '').includes('문서 작업 공간'), sidebarVisibility: sb ? getComputedStyle(sb).visibility : null, mainVisibility: main ? getComputedStyle(main).visibility : null, accountHidden: document.getElementById('od-account')?.hidden }; });
       R.gate = g;
       const s = await shot('00a-signin-gate.png');
-      const ok = g.locked && g.gateHidden === false && g.gateVisible && /Google 계정으로 로그인/.test(g.button || '') && g.buttonVisible && /로그인해 주세요/.test(g.msg) && g.sidebarVisibility === 'hidden' && g.subtitleRemoved;
+      const ok = g.locked && g.gateHidden === false && g.gateVisible && /로그인 \(Google · Apple\)/.test(g.button || '') && g.buttonVisible && /로그인해 주세요/.test(g.msg) && g.sidebarVisibility === 'hidden' && g.subtitleRemoved;
       setCheck('G1-signin-gate-shown-workspace-hidden', ok ? 'passed' : 'failed', JSON.stringify(g), [s]);
     } catch (e) { setCheck('G1-signin-gate-shown-workspace-hidden', 'failed', 'error: ' + e.message, [await shot('00a-gate-error.png')]); }
 
@@ -186,10 +200,10 @@ async function runE2E(o) {
         const r = await waitUnlocked(90000);
         R.login = { method: 'refresh-token secret via window.pdfDesktop.auth.set + reload', ...r };
         const s = await shot('00b-signed-in.png');
-        setCheck('G2-real-account-unlock', r.unlocked && r.accountHasAt ? 'passed' : 'failed', JSON.stringify(r), [s]);
+        setCheck('G2-real-account-unlock', r.unlocked && r.accountHasAt && r.matchesExpectedAccount !== false ? 'passed' : 'failed', JSON.stringify(r), [s]);
       } catch (e) { R.login = { error: e.message }; setCheck('G2-real-account-unlock', 'failed', 'error: ' + e.message, [await shot('00b-login-error.png')]); }
     } else {
-      setCheck('G2-real-account-unlock', 'not-verified', 'OD_TEST_REFRESH_TOKEN absent: gate hidden by harness, login path NOT verified');
+      setCheck('G2-real-account-unlock', 'not-verified', 'no refresh token (' + tokenSource + '): gate hidden by harness, login path NOT verified');
     }
     if (await ev(() => document.documentElement.classList.contains('od-locked'))) {
       L('gate still locked; hiding it so tool checks can run (login NOT counted as verified)');
@@ -314,7 +328,7 @@ async function runE2E(o) {
         const r = await waitUnlocked(90000);
         R.relaunch = r;
         const s = await shot('06-relaunch-auto-unlocked.png');
-        setCheck('G3-restart-persistence', r.unlocked && r.accountHasAt ? 'passed' : 'failed', JSON.stringify(r), [s]);
+        setCheck('G3-restart-persistence', r.unlocked && r.accountHasAt && r.matchesExpectedAccount !== false ? 'passed' : 'failed', JSON.stringify(r), [s]);
       } catch (e) { setCheck('G3-restart-persistence', 'failed', 'error: ' + e.message, [await shot('06-relaunch-error.png')]); }
     } else setCheck('G3-restart-persistence', 'not-verified', 'skipped because G2 did not pass / no token');
   } catch (e) {
