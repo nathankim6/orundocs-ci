@@ -123,7 +123,7 @@ jobs:
     timeout-minutes: 90
     env:
       TEST_RUNNER_OD_REVIEW_EMAIL: ${{ secrets.OD_REVIEW_EMAIL }}
-      TEST_RUNNER_OD_REVIEW_PASSWORD: ${{ secrets.OD_REVIEW_PASSWORD }}
+      TEST_RUNNER_OD_REVIEW_PASSWORD: ${{ secrets.OD_REVIEW_PASSWORD_V2 }}
     steps:
       - uses: actions/checkout@v4
         with:
@@ -149,8 +149,7 @@ jobs:
       - name: Fresh review-account refresh token for the debug-hook fallback (never printed)
         env:
           RE: ${{ secrets.OD_REVIEW_EMAIL }}
-          RP: ${{ secrets.OD_REVIEW_PASSWORD }}
-          OLD_RT: ${{ secrets.OD_TEST_REFRESH_TOKEN }}
+          RP: ${{ secrets.OD_REVIEW_PASSWORD_V2 }}
         run: |
           python3 - <<'PYEOF'
           import json, os, re, urllib.request
@@ -166,9 +165,8 @@ jobs:
               print("::add-mask::" + rt)
               with open(os.environ["GITHUB_ENV"], "a") as f: f.write("TEST_RUNNER_OD_TEST_RT=" + rt + "\n")
               print("fresh review refresh token obtained (masked)")
-          elif os.environ.get("OLD_RT"):
-              with open(os.environ["GITHUB_ENV"], "a") as f: f.write("TEST_RUNNER_OD_TEST_RT=" + os.environ["OLD_RT"] + "\n")
-              print("using stored OD_TEST_REFRESH_TOKEN secret")
+          else:
+              print("no fresh token; debug-hook fallback unavailable")
           PYEOF
       - name: Add UI test target (CI copy only)
         working-directory: ${{ runner.temp }}/od/ios/App
@@ -263,6 +261,18 @@ jobs:
                           if s != o:
                               open(p, "wb").write(s); n += 1
           print("redacted files:", n)
+          # final leak scan over EVERY file that will be uploaded (text and binary): must be 0
+          leaks = 0
+          if toks and os.path.isdir(root):
+              for dp, _, fs in os.walk(root):
+                  for f in fs:
+                      p = os.path.join(dp, f)
+                      b = open(p, "rb").read()
+                      hit = any(t.encode() in b or t.lower().encode() in b for t in toks) or b"::add-mask::" in b
+                      if hit:
+                          leaks += 1
+                          os.remove(p)
+          print("secret/token matches remaining in artifact files:", leaks, "(any such file was deleted)")
           EOF
       - uses: actions/upload-artifact@v4
         if: always()
