@@ -51,7 +51,8 @@ jobs:
       - name: Install, E2E, uninstall (real setup exe)
         shell: pwsh
         env:
-          OD_TEST_REFRESH_TOKEN: ${{ secrets.OD_TEST_REFRESH_TOKEN }}
+          OD_REVIEW_EMAIL: ${{ secrets.OD_REVIEW_EMAIL }}
+          OD_REVIEW_PASSWORD: ${{ secrets.OD_REVIEW_PASSWORD }}
         run: node ci-desktop/win-flow.cjs "$env:RUNNER_TEMP\bin\OrunDocs-Setup-4.0.0-x64.exe" "$env:RUNNER_TEMP\evidence-windows"
       - name: Upload evidence
         if: always()
@@ -88,7 +89,8 @@ jobs:
           node -e "console.log('playwright-core', require('playwright-core/package.json').version)"
       - name: Verify, install, E2E, build DMG
         env:
-          OD_TEST_REFRESH_TOKEN: ${{ secrets.OD_TEST_REFRESH_TOKEN }}
+          OD_REVIEW_EMAIL: ${{ secrets.OD_REVIEW_EMAIL }}
+          OD_REVIEW_PASSWORD: ${{ secrets.OD_REVIEW_PASSWORD }}
         run: bash ci-desktop/mac-flow.sh "$RUNNER_TEMP/bin/OrunDocs-4.0.0-mac-arm64-notarized.zip" "$RUNNER_TEMP/evidence-macos" "$RUNNER_TEMP/dmg"
       - name: Upload evidence
         if: always()
