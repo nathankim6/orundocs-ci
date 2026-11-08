@@ -185,7 +185,7 @@ jobs:
         shell: bash
         env:
           OD_REVIEW_EMAIL: ${{ secrets.OD_REVIEW_EMAIL }}
-          OD_REVIEW_PASSWORD: ${{ secrets.OD_REVIEW_PASSWORD }}
+          OD_REVIEW_PASSWORD: ${{ secrets.OD_REVIEW_PASSWORD_V2 }}
         run: |
           set -euo pipefail
           mkdir -p ci-output
