@@ -47,6 +47,8 @@ sleep 5; pkill -f "OrunDocs.app/Contents/MacOS/OrunDocs" 2>/dev/null; sleep 2
 
 # E2E against /Applications copy
 ( cd "$HERE" && node mac-e2e.cjs "/Applications/OrunDocs.app" "$OUT" ) 2>&1 | tee "$OUT/mac-e2e-console.txt"
+# Never keep GitHub ::add-mask:: lines (they carry the secret itself) in uploaded evidence files.
+sed -i '' '/::add-mask::/d' "$OUT/mac-e2e-console.txt"
 grep -q "MAC E2E OVERALL passed" "$OUT/mac-e2e-console.txt" && step 4-e2e passed "see e2e-result.json" || step 4-e2e "$(grep -o 'MAC E2E OVERALL [a-z]*' "$OUT/mac-e2e-console.txt" | awk '{print $4}')" "see e2e-result.json"
 pkill -f "OrunDocs.app/Contents/MacOS/OrunDocs" 2>/dev/null
 
