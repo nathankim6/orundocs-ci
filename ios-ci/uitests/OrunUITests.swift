@@ -137,7 +137,18 @@ final class OrunUITests: XCTestCase {
     /// Type into an out-of-process web field: make sure it has focus, type slowly, verify, retry once.
     private func typeInto(_ field: XCUIElement, _ text: String, secure: Bool) -> Bool {
         for attempt in 0..<3 {
-            for _ in 0..<4 where !hasFocus(field) { field.tap(); Thread.sleep(forTimeInterval: 1) }
+            for i in 0..<4 where !hasFocus(field) {
+                if i == 0 || i == 2 {
+                    // the field may sit under the keyboard accessory bar: move focus with "Next" first
+                    if let next = [currentApp!.buttons["Next"], safariVS.buttons["Next"], currentApp!.buttons["Next Field"], safariVS.buttons["Next Field"]].first(where: { $0.exists && $0.isHittable }) {
+                        next.tap(); Thread.sleep(forTimeInterval: 1); continue
+                    }
+                }
+                if i == 1, let done = [currentApp!.buttons["Done"], safariVS.buttons["Done"]].first(where: { $0.exists && $0.isHittable }) {
+                    done.tap(); Thread.sleep(forTimeInterval: 1)
+                }
+                field.tap(); Thread.sleep(forTimeInterval: 1)
+            }
             if !hasFocus(field) { print("ODNOTE: field not focused (attempt \(attempt + 1))"); continue }
             let current = (field.value as? String) ?? ""
             let placeholder = field.placeholderValue ?? ""
@@ -222,18 +233,25 @@ final class OrunUITests: XCTestCase {
         let hasGoogle = web("label CONTAINS 'Google 계정으로 계속'") != nil
         let hasApple = web("label CONTAINS 'Apple로 계속'") != nil
         record("b2-websheet-choices", hasGoogle && hasApple, "google=\(hasGoogle) apple=\(hasApple) emailOption=true")
-        summary.tap()
         let tf = XCUIElement.ElementType.textField.rawValue, stf = XCUIElement.ElementType.secureTextField.rawValue
-        guard let emailField = waitWeb("elementType == \(tf) AND (placeholderValue == '이메일' OR label == '이메일' OR value == '이메일')", 10)
-                ?? waitWeb("elementType == \(tf)", 3) else { shot("b3-form"); record("b-real-signin", false, "email field not found"); return }
+        let emailQ = "elementType == \(tf) AND (placeholderValue == '이메일' OR label == '이메일')"
+        var emailFieldOpt: XCUIElement? = nil
+        for attempt in 0..<4 {
+            if attempt < 2 { summary.tap() } else { summary.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.5)).tap() }
+            emailFieldOpt = waitWeb(emailQ, 6)
+            if emailFieldOpt != nil { break }
+            print("ODNOTE: email form not expanded after summary tap \(attempt + 1)")
+        }
+        guard let emailField = emailFieldOpt else { shot("b3-form"); record("b-real-signin", false, "email field not found"); return }
         let emailOk = typeInto(emailField, em, secure: false)
         guard let pwField = waitWeb("elementType == \(stf)", 10) else { shot("b3-form"); record("b-real-signin", false, "password field not found"); return }
         let pwOk = typeInto(pwField, pw, secure: true)
         record("b3-form-typed", emailOk && pwOk, "emailTyped=\(emailOk) passwordTyped=\(pwOk)")
         Thread.sleep(forTimeInterval: 0.5)
         shot("b3-form-filled") // password is masked by the system
-        guard let submit = waitWeb("label == '이메일로 로그인' AND elementType == \(btnType)", 5) else { record("b-real-signin", false, "submit button not found"); return }
-        submit.tap()
+        if pwOk && hasFocus(pwField) { pwField.typeText("\n") } // submits the form
+        Thread.sleep(forTimeInterval: 3)
+        if !accountChip(app).exists, let submit = web("label == '이메일로 로그인' AND elementType == \(btnType)"), submit.isHittable { submit.tap() }
         // callback com.orundocs.app://auth -> token refresh + allowlist -> unlock
         let chip = accountChip(app)
         let end = Date().addingTimeInterval(90)
@@ -385,7 +403,19 @@ final class OrunUITests: XCTestCase {
         let back = any(app, "label == '← 모든 도구' AND elementType == \(btnType)")
         if back.exists { tapCenter(back); Thread.sleep(forTimeInterval: 2) }
         let split = app.buttons["PDF 분할 도구 열기"]
-        guard split.waitForExistence(timeout: 10) else { record("e-split-preview", false, "split card not found"); return }
+        if !split.waitForExistence(timeout: 6) {
+            let side = any(app, "label == '모든 도구' AND elementType == \(btnType)")
+            if side.exists { side.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.5)).tap(); Thread.sleep(forTimeInterval: 2) }
+            let sf = any(app, "placeholderValue CONTAINS '도구 이름' OR label == 'PDF 도구 검색'")
+            if sf.exists {
+                tapCenter(sf); Thread.sleep(forTimeInterval: 1)
+                let cur = (sf.value as? String) ?? ""
+                if !cur.isEmpty && !cur.contains("도구 이름") { app.typeText(String(repeating: XCUIKeyboardKey.delete.rawValue, count: cur.count + 2)) }
+                app.typeText("분할"); Thread.sleep(forTimeInterval: 1)
+                dismissKeyboard(app)
+            }
+        }
+        guard split.waitForExistence(timeout: 10) else { shot("e0-no-split"); dump("e0-no-split", app); record("e-split-preview", false, "split card not found"); return }
         tapCenter(split)
         let choose = any(app, "label CONTAINS '파일 선택' AND elementType == \(btnType)")
         guard choose.waitForExistence(timeout: 10) else { record("e-split-preview", false, "choose button not found"); return }
@@ -395,8 +425,19 @@ final class OrunUITests: XCTestCase {
         var fileTapped = false
         let navEnd = Date().addingTimeInterval(40)
         while Date() < navEnd {
+            let cell = app.cells.matching(NSPredicate(format: "label CONTAINS 'preview-six-pages'")).firstMatch
             let f = any(app, fileQ)
-            if f.exists && f.isHittable { f.tap(); fileTapped = true; break }
+            if cell.exists || f.exists {
+                for t in 0..<3 {
+                    if cell.exists && cell.isHittable { cell.tap() }
+                    else if f.exists { f.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: t == 0 ? -2.5 : 0.5)).tap() }
+                    Thread.sleep(forTimeInterval: 2)
+                    if app.buttons["Open"].exists && app.buttons["Open"].isEnabled { app.buttons["Open"].tap(); Thread.sleep(forTimeInterval: 1.5) }
+                    if !any(app, fileQ).exists { fileTapped = true; break }
+                    print("ODNOTE: picker still open after file tap \(t + 1)")
+                }
+                break
+            }
             let cf = any(app, "label == 'Choose Files'")
             if cf.exists && cf.isHittable { cf.tap(); Thread.sleep(forTimeInterval: 2); continue }
             if let l = [any(app, "label == 'On My iPhone' AND elementType != \(XCUIElement.ElementType.navigationBar.rawValue)"), any(app, "label == 'On My iPad' AND elementType != \(XCUIElement.ElementType.navigationBar.rawValue)")].first(where: { $0.exists && $0.isHittable }) { l.tap(); Thread.sleep(forTimeInterval: 2); continue }
