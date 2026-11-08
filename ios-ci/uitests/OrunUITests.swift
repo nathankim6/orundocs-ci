@@ -132,15 +132,38 @@ final class OrunUITests: XCTestCase {
         return nil
     }
 
+    private func hasFocus(_ e: XCUIElement) -> Bool { (e.value(forKey: "hasKeyboardFocus") as? Bool) ?? false }
+
+    /// Type into an out-of-process web field: make sure it has focus, type slowly, verify, retry once.
+    private func typeInto(_ field: XCUIElement, _ text: String, secure: Bool) -> Bool {
+        for attempt in 0..<3 {
+            for _ in 0..<4 where !hasFocus(field) { field.tap(); Thread.sleep(forTimeInterval: 1) }
+            if !hasFocus(field) { print("ODNOTE: field not focused (attempt \(attempt + 1))"); continue }
+            let current = (field.value as? String) ?? ""
+            let placeholder = field.placeholderValue ?? ""
+            if !current.isEmpty && current != placeholder {
+                field.typeText(String(repeating: XCUIKeyboardKey.delete.rawValue, count: current.count + 2))
+            }
+            if secure { field.typeText(text) } else { for ch in text { field.typeText(String(ch)); Thread.sleep(forTimeInterval: 0.12) } }
+            Thread.sleep(forTimeInterval: 0.5)
+            let v = (field.value as? String) ?? ""
+            let ok = secure ? v.count == text.count : v.lowercased() == text.lowercased()
+            if ok { return true }
+            print("ODNOTE: typed value mismatch (attempt \(attempt + 1), len \(v.count) vs \(text.count))")
+        }
+        return false
+    }
+
     private func consentAlert(_ app: XCUIApplication, _ timeout: TimeInterval) -> XCUIElement? {
         waitAny([springboard.alerts.firstMatch, app.alerts.firstMatch], timeout: timeout)
     }
 
     private func tapLoginUntilConsent(_ app: XCUIApplication, _ login: XCUIElement) -> XCUIElement? {
-        Thread.sleep(forTimeInterval: 2)
-        for attempt in 0..<3 {
+        Thread.sleep(forTimeInterval: 4)
+        for attempt in 0..<4 {
             if login.exists { tapCenter(login) }
-            if let a = consentAlert(app, attempt == 2 ? 20 : 10) { return a }
+            if let a = consentAlert(app, attempt == 3 ? 20 : 10) { return a }
+            Thread.sleep(forTimeInterval: 2)
             print("ODNOTE: consent prompt not shown after tap attempt \(attempt + 1); retrying")
         }
         return nil
@@ -203,11 +226,10 @@ final class OrunUITests: XCTestCase {
         let tf = XCUIElement.ElementType.textField.rawValue, stf = XCUIElement.ElementType.secureTextField.rawValue
         guard let emailField = waitWeb("elementType == \(tf) AND (placeholderValue == '이메일' OR label == '이메일' OR value == '이메일')", 10)
                 ?? waitWeb("elementType == \(tf)", 3) else { shot("b3-form"); record("b-real-signin", false, "email field not found"); return }
-        emailField.tap(); Thread.sleep(forTimeInterval: 1)
-        emailField.typeText(em)
+        let emailOk = typeInto(emailField, em, secure: false)
         guard let pwField = waitWeb("elementType == \(stf)", 10) else { shot("b3-form"); record("b-real-signin", false, "password field not found"); return }
-        pwField.tap(); Thread.sleep(forTimeInterval: 1)
-        pwField.typeText(pw)
+        let pwOk = typeInto(pwField, pw, secure: true)
+        record("b3-form-typed", emailOk && pwOk, "emailTyped=\(emailOk) passwordTyped=\(pwOk)")
         Thread.sleep(forTimeInterval: 0.5)
         shot("b3-form-filled") // password is masked by the system
         guard let submit = waitWeb("label == '이메일로 로그인' AND elementType == \(btnType)", 5) else { record("b-real-signin", false, "submit button not found"); return }
