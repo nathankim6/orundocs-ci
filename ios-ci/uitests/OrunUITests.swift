@@ -291,6 +291,11 @@ final class OrunUITests: XCTestCase {
         }
         record("c0-unlocked", chip.exists, "via=\(via)")
         guard chip.exists else { shot("c0-locked"); return }
+        // clear the "◀ Safari" return breadcrumb left by the sign-in hand-off: go Home and reopen from SpringBoard
+        XCUIDevice.shared.press(.home)
+        Thread.sleep(forTimeInterval: 2)
+        app.activate()
+        _ = chip.waitForExistence(timeout: 20)
         Thread.sleep(forTimeInterval: 2)
         shot("c1-home")
         appshot("02a-home-top")
@@ -461,15 +466,24 @@ final class OrunUITests: XCTestCase {
         if !fileTapped { shot("e1-picker"); dump("e1-picker", app) }
         Thread.sleep(forTimeInterval: 1.5)
         if app.buttons["Open"].exists && app.buttons["Open"].isEnabled { app.buttons["Open"].tap() }
-        let multi = any(app, "label == '여러 페이지' AND elementType == \(btnType)")
+        let multi = any(app, "label == '여러 페이지' AND (elementType == \(btnType) OR elementType == \(XCUIElement.ElementType.switch.rawValue))")
         let selAll = any(app, "label == '전체 선택'")
         let previewOk = waitAny([multi, selAll], timeout: 40) != nil
         if multi.exists { tapCenter(multi) }
         Thread.sleep(forTimeInterval: 5)
-        let preview = any(app, "label CONTAINS '여러 PDF 페이지' OR label CONTAINS '미리보기'")
-        if preview.exists { reveal(preview) }
-        if multi.exists { reveal(multi) }
-        Thread.sleep(forTimeInterval: 3)
+        // frame the preview: put the "PDF 페이지 미리보기" heading near the top of the window
+        let heading = any(app, "label == 'PDF 페이지 미리보기'")
+        if heading.exists {
+            reveal(heading)
+            let win = app.windows.firstMatch.frame
+            var n = 0
+            while heading.exists && heading.frame.minY > win.minY + win.height * 0.14 && n < 10 {
+                app.coordinate(withNormalizedOffset: CGVector(dx: 0.96, dy: 0.6)).press(forDuration: 0.05, thenDragTo: app.coordinate(withNormalizedOffset: CGVector(dx: 0.96, dy: 0.45)))
+                Thread.sleep(forTimeInterval: 0.8); n += 1
+            }
+        } else if multi.exists { reveal(multi) }
+        if multi.exists && multi.isHittable { multi.tap() }
+        Thread.sleep(forTimeInterval: 5)
         shot("e2-split-preview")
         dump("e2-split-preview", app)
         appshot("04")
