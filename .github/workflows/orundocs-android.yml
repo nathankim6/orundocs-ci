@@ -20,7 +20,7 @@ concurrency:
   cancel-in-progress: false
 
 env:
-  SOURCE_SHA256: 5cc35b07d0b26bf043d9a0a8f34e3888dc42f026c0d25ac53c21ec7a4a18de60
+  SOURCE_SHA256: 3b5a5497c5b95951b6615e82e6b0e55c3c3a13ee62473cf557d267a9119f9d58
 
 defaults:
   run:
@@ -184,10 +184,13 @@ jobs:
         if: ${{ !cancelled() && steps.install_signed.outcome == 'success' }}
         shell: bash
         env:
-          OD_TEST_REFRESH_TOKEN: ${{ secrets.OD_TEST_REFRESH_TOKEN }}
+          OD_REVIEW_EMAIL: ${{ secrets.OD_REVIEW_EMAIL }}
+          OD_REVIEW_PASSWORD: ${{ secrets.OD_REVIEW_PASSWORD }}
         run: |
           set -euo pipefail
           mkdir -p ci-output
+          OD_TEST_REFRESH_TOKEN=$(node -e 'fetch("https://identitytoolkit.googleapis.com/v1/accounts:signInWithPassword?key=AIzaSyCtvGwVSwR0YoxPwNiVBLAWTDkyr-hDh3c",{method:"POST",headers:{"content-type":"application/json"},body:JSON.stringify({email:process.env.OD_REVIEW_EMAIL,password:process.env.OD_REVIEW_PASSWORD,returnSecureToken:true})}).then(r=>r.json()).then(j=>process.stdout.write(j.refreshToken||""))' || true)
+          echo "::add-mask::$OD_TEST_REFRESH_TOKEN"
           EXTRA=()
           if [ -n "${OD_TEST_REFRESH_TOKEN:-}" ]; then EXTRA=(-e odRefreshToken "$OD_TEST_REFRESH_TOKEN"); fi
           timeout 600 adb shell am instrument -w -r "${EXTRA[@]}" -e class com.pdfatelier.android.NativeWebViewSmokeTest -e smokeArtifactDir /sdcard/Android/data/com.orundocs.app/files/native-smoke com.orundocs.app.test/androidx.test.runner.AndroidJUnitRunner | tr -d '\r' | tee ci-output/instrumentation.txt
