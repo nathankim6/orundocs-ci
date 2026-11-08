@@ -76,6 +76,7 @@ jobs:
           test "$(/usr/libexec/PlistBuddy -c 'Print :CFBundleIdentifier' "$P")" = "com.orundocs.app"
           test "$(/usr/libexec/PlistBuddy -c 'Print :CFBundleShortVersionString' "$P")" = "4.0.0"
           test "$(/usr/libexec/PlistBuddy -c 'Print :CFBundleDisplayName' "$P")" = "OrunDocs"
+          test "$(/usr/libexec/PlistBuddy -c 'Print :CFBundleVersion' "$P")" = "2"
           grep -q "OD_TEST_RT_IN_RELEASE=absent" "$V"
           python3 - "$APP/public" <<'PYEOF' | tee -a "$V"
           import sys, os
@@ -85,20 +86,31 @@ jobs:
           esc = "".join("\\u%04x" % ord(c) if ord(c) > 127 else c for c in lit)
           found = lit in s or esc.lower() in s.lower()
           print("GATE_SUBTITLE_IN_RELEASE=" + ("FOUND" if found else "absent"))
+          def forms(t):
+              u = "".join("\\u%04x" % ord(c) if ord(c) > 127 else c for c in t)
+              x = "".join(("\\x%02x" % ord(c)) if 127 < ord(c) <= 255 else ("\\u%04x" % ord(c) if ord(c) > 255 else c) for c in t)
+              return [t.lower(), u.lower(), x.lower()]
+          low = s.lower()
+          for name, t in [("LOGIN_BUTTON", "\ub85c\uadf8\uc778 (Google \u00b7 Apple)"), ("DELETE_ACCOUNT", "\uacc4\uc815 \uc0ad\uc81c")]:
+              print(name + "_IN_RELEASE=" + ("present" if any(f in low for f in forms(t)) else "MISSING"))
+          idx = open(os.path.join(root, "index.html"), encoding="utf-8").read()
+          print("CSP_IDENTITYTOOLKIT=" + ("present" if "https://identitytoolkit.googleapis.com" in idx else "MISSING"))
           css = open(os.path.join(root, "android.css"), encoding="utf-8").read()
           print("STATUSBAR_BACKDROP_CSS=" + ("present" if "body::before" in css and "safe-area-inset-top" in css else "missing"))
           PYEOF
           grep -q "GATE_SUBTITLE_IN_RELEASE=absent" "$V"
+          grep -q "LOGIN_BUTTON_IN_RELEASE=present" "$V"
+          grep -q "CSP_IDENTITYTOOLKIT=present" "$V"
           cd "$RUNNER_TEMP/out"
-          ditto -c -k --sequesterRsrc --keepParent OrunDocs.xcarchive OrunDocs-4.0.0-unsigned.xcarchive.zip
-          shasum -a 256 OrunDocs-4.0.0-unsigned.xcarchive.zip | tee -a "$V"
+          ditto -c -k --sequesterRsrc --keepParent OrunDocs.xcarchive OrunDocs-4.0.0-build2-unsigned.xcarchive.zip
+          shasum -a 256 OrunDocs-4.0.0-build2-unsigned.xcarchive.zip | tee -a "$V"
       - uses: actions/upload-artifact@v4
         if: always()
         with:
           name: orundocs-ios-unsigned-xcarchive
           retention-days: 14
           path: |
-            ${{ runner.temp }}/out/OrunDocs-4.0.0-unsigned.xcarchive.zip
+            ${{ runner.temp }}/out/OrunDocs-4.0.0-build2-unsigned.xcarchive.zip
             ${{ runner.temp }}/out/verify.txt
             ${{ runner.temp }}/out/archive.log
 
@@ -108,6 +120,8 @@ jobs:
     timeout-minutes: 90
     env:
       TEST_RUNNER_OD_TEST_RT: ${{ secrets.OD_TEST_REFRESH_TOKEN }}
+      TEST_RUNNER_OD_REVIEW_EMAIL: ${{ secrets.OD_REVIEW_EMAIL }}
+      TEST_RUNNER_OD_REVIEW_PASSWORD: ${{ secrets.OD_REVIEW_PASSWORD }}
     steps:
       - uses: actions/checkout@v4
         with:
@@ -162,8 +176,8 @@ jobs:
                   for x in devs:
                       if x["name"]==p: return x
               return next(x for x in devs if x["name"].startswith(kind))
-          a=pick(["iPhone 16","iPhone 17","iPhone 16 Pro","iPhone 17 Pro"],"iPhone")
-          b=pick(["iPad Pro 11-inch (M4)","iPad Air 11-inch (M3)","iPad Air 11-inch (M2)","iPad (A16)"],"iPad")
+          a=pick(["iPhone 17 Pro Max","iPhone 16 Pro Max","iPhone Air"],"iPhone")
+          b=pick(["iPad Pro 13-inch (M4)","iPad Pro 13-inch (M5)","iPad Air 13-inch (M3)"],"iPad")
           print("iphone="+a["udid"]); print("ipad="+b["udid"])
           print("names="+a["name"]+" / "+b["name"]+" / "+rts[-1])
           ' | tee -a "$GITHUB_OUTPUT"
@@ -179,6 +193,9 @@ jobs:
             xcrun simctl boot "$udid" || true
             xcrun simctl bootstatus "$udid" -b
             xcrun simctl addmedia "$udid" "$GITHUB_WORKSPACE/ios-ci/fixtures/exam-photo.jpg"
+            xcrun simctl status_bar "$udid" override --time 9:41 --dataNetwork wifi --wifiMode active --wifiBars 3 --cellularMode active --cellularBars 4 --batteryState charged --batteryLevel 100 || echo "status_bar override failed"
+            G=$(xcrun simctl get_app_container "$udid" com.apple.DocumentsApp groups 2>/dev/null | grep -i LocalStorage | sed 's#^[^/]*##')
+            if [ -n "$G" ]; then mkdir -p "$G/File Provider Storage" && cp "$GITHUB_WORKSPACE/ios-ci/fixtures/preview-six-pages.pdf" "$G/File Provider Storage/" && echo "PDF fixture placed in On My device storage"; ls -la "$G/File Provider Storage"; else echo "Files local storage container not found"; xcrun simctl get_app_container "$udid" com.apple.DocumentsApp groups || true; fi
             xcrun simctl uninstall "$udid" com.orundocs.app || true
             TEST_RUNNER_OD_SHOTS="$RUNNER_TEMP/out/shots/$name" xcodebuild test-without-building -project App.xcodeproj -scheme AppUITests \
               -destination "id=$udid" -derivedDataPath "$RUNNER_TEMP/dd" -resultBundlePath "$RUNNER_TEMP/xcresult-$name" \
@@ -196,17 +213,21 @@ jobs:
         run: |
           python3 - <<'EOF'
           import os
-          tok = os.environ.get("TEST_RUNNER_OD_TEST_RT", "")
+          toks = [os.environ.get(k, "") for k in ("TEST_RUNNER_OD_TEST_RT", "TEST_RUNNER_OD_REVIEW_PASSWORD", "TEST_RUNNER_OD_REVIEW_EMAIL")]
+          toks = [t for t in toks if len(t) >= 4]
           root = os.path.join(os.environ["RUNNER_TEMP"], "out")
           n = 0
-          if tok and os.path.isdir(root):
+          if toks and os.path.isdir(root):
               for dp, _, fs in os.walk(root):
                   for f in fs:
                       p = os.path.join(dp, f)
                       if f.endswith((".log", ".txt")):
-                          s = open(p, "rb").read()
-                          if tok.encode() in s:
-                              open(p, "wb").write(s.replace(tok.encode(), b"***")); n += 1
+                          s = open(p, "rb").read(); o = s
+                          for tok in toks:
+                              for v in {tok, tok.lower()}:
+                                  s = s.replace(v.encode(), b"***")
+                          if s != o:
+                              open(p, "wb").write(s); n += 1
           print("redacted files:", n)
           EOF
       - uses: actions/upload-artifact@v4
