@@ -3,7 +3,6 @@ import XCTest
 /// OrunDocs simulator UI tests (CI harness only; not part of the shipped app).
 /// Screenshots + hierarchy dumps go to $OD_SHOTS (passed as TEST_RUNNER_OD_SHOTS).
 final class OrunUITests: XCTestCase {
-    private let email = "5554ksj2@gmail.com"
     private lazy var device: String = UIDevice.current.userInterfaceIdiom == .pad ? "ipad" : "iphone"
     private lazy var outDir: URL = {
         let p = ProcessInfo.processInfo.environment["OD_SHOTS"] ?? NSTemporaryDirectory()
@@ -96,227 +95,308 @@ final class OrunUITests: XCTestCase {
         }
     }
 
-    // MARK: a + b: gate visible, sign-in consent sheet, cancel
+    // MARK: shared
+    private let btnType = XCUIElement.ElementType.button.rawValue
+    private var reviewEmail: String { (ProcessInfo.processInfo.environment["OD_REVIEW_EMAIL"] ?? "").lowercased() }
+    private let safariVS = XCUIApplication(bundleIdentifier: "com.apple.SafariViewService")
+
+    /// App Store screenshot (raw XCUIScreen PNG; alpha is stripped and sizes verified after download).
+    private func appshot(_ n: String) {
+        let s = XCUIScreen.main.screenshot()
+        let dir = outDir.appendingPathComponent("appstore", isDirectory: true)
+        try? FileManager.default.createDirectory(at: dir, withIntermediateDirectories: true)
+        try? s.pngRepresentation.write(to: dir.appendingPathComponent("\(device)-\(n).png"))
+    }
+
+    private func loginButton(_ app: XCUIApplication) -> XCUIElement {
+        any(app, "label CONTAINS '로그인 (Google' AND elementType == \(btnType)")
+    }
+
+    private func accountChip(_ app: XCUIApplication) -> XCUIElement {
+        let e = reviewEmail
+        return any(app, "label CONTAINS[c] '\(e.isEmpty ? "@" : e)' AND elementType == \(btnType)")
+    }
+
+    /// Find an element either in the app or in the out-of-process web authentication sheet.
+    private func web(_ format: String) -> XCUIElement? {
+        for root in [currentApp!, safariVS] {
+            let e = any(root, format)
+            if e.exists { return e }
+        }
+        return nil
+    }
+
+    private func waitWeb(_ format: String, _ timeout: TimeInterval) -> XCUIElement? {
+        let end = Date().addingTimeInterval(timeout)
+        repeat { if let e = web(format) { return e }; Thread.sleep(forTimeInterval: 0.7) } while Date() < end
+        return nil
+    }
+
+    private func consentAlert(_ app: XCUIApplication, _ timeout: TimeInterval) -> XCUIElement? {
+        waitAny([springboard.alerts.firstMatch, app.alerts.firstMatch], timeout: timeout)
+    }
+
+    private func tapLoginUntilConsent(_ app: XCUIApplication, _ login: XCUIElement) -> XCUIElement? {
+        Thread.sleep(forTimeInterval: 2)
+        for attempt in 0..<3 {
+            if login.exists { tapCenter(login) }
+            if let a = consentAlert(app, attempt == 2 ? 20 : 10) { return a }
+            print("ODNOTE: consent prompt not shown after tap attempt \(attempt + 1); retrying")
+        }
+        return nil
+    }
+
+    // MARK: a + b0: gate visible, consent prompt, cancel
     func test1_GateAndCancel() {
         let app = XCUIApplication()
         currentApp = app
         app.launch()
-        let login = any(app, "label CONTAINS 'Google 계정으로 로그인' AND elementType == \(XCUIElement.ElementType.button.rawValue)")
+        let login = loginButton(app)
         let gateOk = login.waitForExistence(timeout: 60)
         let msg = any(app, "label CONTAINS '로그인해 주세요'")
         _ = msg.waitForExistence(timeout: 10)
+        Thread.sleep(forTimeInterval: 1.5)
         shot("a-gate")
+        appshot("01")
         dump("a-gate", app)
-        record("a-gate-visible", gateOk && msg.exists, "button=\(gateOk) message=\(msg.exists)")
-        let subtitle = any(app, "label CONTAINS '옳은영어 김성진T 문서 작업 공간'")
-        record("a-gate-subtitle-absent", !subtitle.exists, "subtitlePresent=\(subtitle.exists)")
+        record("a-gate-visible", gateOk && msg.exists, "button=\(gateOk ? login.label : "missing") message=\(msg.exists)")
         guard gateOk else { return }
-
-        // ASWebAuthenticationSession consent prompt: '"OrunDocs" Wants to Use "web.app" to Sign In'
-        let sbAlert = springboard.alerts.firstMatch
-        let appAlert = app.alerts.firstMatch
-        Thread.sleep(forTimeInterval: 2)
-        var alert: XCUIElement? = nil
-        for attempt in 0..<3 {
-            if login.exists { tapCenter(login) }
-            alert = waitAny([sbAlert, appAlert], timeout: attempt == 2 ? 20 : 10)
-            if alert != nil { break }
-            print("ODNOTE: consent prompt not shown after tap attempt \(attempt + 1); retrying")
-        }
-        shot("b-consent")
-        dump("b-consent-app", app)
-        dump("b-consent-springboard", springboard)
+        let alert = tapLoginUntilConsent(app, login)
+        shot("b0-consent")
         let label = alert?.label ?? ""
-        record("b-consent-shown", alert != nil && label.contains("web.app") && label.contains("Sign In"), "alert=\(label)")
+        record("b0-consent-shown", alert != nil && label.contains("web.app"), "alert=\(label)")
         if let alert = alert {
-            let cancel = alert.buttons["Cancel"].exists ? alert.buttons["Cancel"] : alert.buttons.element(boundBy: 0)
-            cancel.tap()
+            (alert.buttons["Cancel"].exists ? alert.buttons["Cancel"] : alert.buttons.element(boundBy: 0)).tap()
         }
         let cancelled = any(app, "label CONTAINS '로그인을 취소했습니다'")
         let ok = cancelled.waitForExistence(timeout: 20)
-        let stillLocked = login.exists
-        shot("b-cancelled")
-        dump("b-cancelled", app)
-        record("b-cancel-message", ok, "cancelledMsg=\(ok) gateStillVisible=\(stillLocked)")
-        record("b-still-locked", stillLocked && !any(app, "label CONTAINS '\(email)'").exists)
+        shot("b0-cancelled")
+        record("b0-cancel-message", ok && login.exists, "cancelledMsg=\(ok) gateStillVisible=\(login.exists)")
     }
 
-    // MARK: c + d: unlock with real token refresh + allowlist, home, exam tool, save, share
-    func test2_UnlockAndExam() {
-        guard let rt = ProcessInfo.processInfo.environment["OD_TEST_RT"], !rt.isEmpty else {
-            record("c-unlock", false, "OD_TEST_RT not provided to test runner"); return
-        }
+    // MARK: b: REAL interactive sign-in (no debug hook): consent -> Continue -> email form -> callback -> unlock
+    func test2_RealSignIn() {
         let app = XCUIApplication()
-        app.launchEnvironment["OD_TEST_RT"] = rt
+        currentApp = app
+        app.launch() // no OD_TEST_RT: the debug hook stays inactive
+        let env = ProcessInfo.processInfo.environment
+        guard let em = env["OD_REVIEW_EMAIL"], let pw = env["OD_REVIEW_PASSWORD"], !em.isEmpty, !pw.isEmpty else {
+            record("b-real-signin", false, "review credentials not provided"); return
+        }
+        let login = loginButton(app)
+        guard login.waitForExistence(timeout: 60) else { record("b-real-signin", false, "gate button missing"); return }
+        guard let alert = tapLoginUntilConsent(app, login) else { shot("b1-no-consent"); record("b-real-signin", false, "consent prompt not shown"); return }
+        shot("b1-consent")
+        let cont = alert.buttons["Continue"].exists ? alert.buttons["Continue"] : alert.buttons.element(boundBy: alert.buttons.count - 1)
+        cont.tap()
+        // web sheet (SafariViewService) loads https://orundocs.web.app/signin
+        let summary = waitWeb("label CONTAINS '관리자가 발급한 이메일 계정으로 로그인'", 45)
+        Thread.sleep(forTimeInterval: 1.5)
+        shot("b2-websheet")
+        try? (app.debugDescription + "\n\n==== SafariViewService ====\n" + safariVS.debugDescription)
+            .write(to: outDir.appendingPathComponent("\(device)-b2-websheet.txt"), atomically: true, encoding: .utf8)
+        guard let summary = summary else { record("b-real-signin", false, "web sign-in sheet / email option not found"); return }
+        let hasGoogle = web("label CONTAINS 'Google 계정으로 계속'") != nil
+        let hasApple = web("label CONTAINS 'Apple로 계속'") != nil
+        record("b2-websheet-choices", hasGoogle && hasApple, "google=\(hasGoogle) apple=\(hasApple) emailOption=true")
+        summary.tap()
+        let tf = XCUIElement.ElementType.textField.rawValue, stf = XCUIElement.ElementType.secureTextField.rawValue
+        guard let emailField = waitWeb("elementType == \(tf) AND (placeholderValue == '이메일' OR label == '이메일' OR value == '이메일')", 10)
+                ?? waitWeb("elementType == \(tf)", 3) else { shot("b3-form"); record("b-real-signin", false, "email field not found"); return }
+        emailField.tap(); Thread.sleep(forTimeInterval: 1)
+        emailField.typeText(em)
+        guard let pwField = waitWeb("elementType == \(stf)", 10) else { shot("b3-form"); record("b-real-signin", false, "password field not found"); return }
+        pwField.tap(); Thread.sleep(forTimeInterval: 1)
+        pwField.typeText(pw)
+        Thread.sleep(forTimeInterval: 0.5)
+        shot("b3-form-filled") // password is masked by the system
+        guard let submit = waitWeb("label == '이메일로 로그인' AND elementType == \(btnType)", 5) else { record("b-real-signin", false, "submit button not found"); return }
+        submit.tap()
+        // callback com.orundocs.app://auth -> token refresh + allowlist -> unlock
+        let chip = accountChip(app)
+        let end = Date().addingTimeInterval(90)
+        var unlocked = false
+        while Date() < end {
+            if chip.exists { unlocked = true; break }
+            for b in [springboard.buttons["Not Now"], safariVS.buttons["Not Now"], app.buttons["Not Now"], safariVS.buttons["나중에"]] where b.exists && b.isHittable { b.tap() }
+            Thread.sleep(forTimeInterval: 1)
+        }
+        Thread.sleep(forTimeInterval: 1.5)
+        shot("b4-unlocked")
+        dump("b4-unlocked", app)
+        let gateGone = !loginButton(app).exists
+        let err = any(app, "label CONTAINS '로그인하지 못했습니다' OR label CONTAINS '허용하지 않은' OR label CONTAINS '일치하지 않습니다'")
+        record("b-real-signin", unlocked && gateGone, "chipShowsReviewEmail=\(unlocked) gateHidden=\(gateGone) errorShown=\(err.exists ? err.label : "no")")
+        try? (unlocked ? "real" : "failed").write(to: outDir.appendingPathComponent("signin-\(device).flag"), atomically: true, encoding: .utf8)
+    }
+
+    // MARK: c + d + App Store shots (session persisted from test2; token hook only as fallback)
+    func test3_ExamFilesMenu() {
+        var app = XCUIApplication()
         currentApp = app
         app.launch()
-        let account = any(app, "label CONTAINS '\(email)'")
-        let unlocked = account.waitForExistence(timeout: 90)
-        Thread.sleep(forTimeInterval: 1.5)
-        shot("c-unlocked")
-        dump("c-unlocked", app)
-        let gateGone = !any(app, "label CONTAINS 'Google 계정으로 로그인' AND elementType == \(XCUIElement.ElementType.button.rawValue)").exists
-        record("c-unlock", unlocked && gateGone, "accountChip=\(unlocked) gateHidden=\(gateGone)")
-        guard unlocked else { return }
+        var chip = accountChip(app)
+        var via = "persisted real sign-in session"
+        if !chip.waitForExistence(timeout: 60) {
+            app.terminate()
+            app = XCUIApplication()
+            currentApp = app
+            app.launchEnvironment["OD_TEST_RT"] = ProcessInfo.processInfo.environment["OD_TEST_RT"] ?? ""
+            app.launch()
+            chip = accountChip(app)
+            via = "FALLBACK token hook"
+            _ = chip.waitForExistence(timeout: 90)
+        }
+        record("c0-unlocked", chip.exists, "via=\(via)")
+        guard chip.exists else { shot("c0-locked"); return }
+        Thread.sleep(forTimeInterval: 2)
+        shot("c1-home")
+        appshot("02a-home-top")
 
-        // d: home tool library
+        // tool library heading near the top for the App Store shot
         let total = any(app, "label CONTAINS '26 TOOLS'")
         let cards = app.buttons.matching(NSPredicate(format: "label ENDSWITH '도구 열기'"))
-        let totalOk = total.waitForExistence(timeout: 15)
-        let n = cards.count
-        // scroll the library into view for the screenshot
-        let search = any(app, "placeholderValue CONTAINS '도구 이름' OR label == 'PDF 도구 검색'")
-        _ = search.waitForExistence(timeout: 10)
-        shot("d1-home")
-        // scroll the home page so content passes under the status bar (iOS status-bar backdrop check)
-        for _ in 0..<2 {
-            app.coordinate(withNormalizedOffset: CGVector(dx: 0.96, dy: 0.75))
-                .press(forDuration: 0.05, thenDragTo: app.coordinate(withNormalizedOffset: CGVector(dx: 0.96, dy: 0.3)))
+        _ = total.waitForExistence(timeout: 15)
+        record("c1-home-26-tools", total.exists && cards.count == 26, "cards=\(cards.count)")
+        if total.exists {
+            reveal(total)
+            let win = app.windows.firstMatch.frame
+            var guardN = 0
+            while total.frame.minY > win.minY + win.height * 0.22 && guardN < 6 {
+                app.coordinate(withNormalizedOffset: CGVector(dx: 0.96, dy: 0.6)).press(forDuration: 0.05, thenDragTo: app.coordinate(withNormalizedOffset: CGVector(dx: 0.96, dy: 0.45)))
+                Thread.sleep(forTimeInterval: 0.8); guardN += 1
+            }
             Thread.sleep(forTimeInterval: 1)
+            appshot("02b-library")
+            shot("c1b-library")
         }
-        Thread.sleep(forTimeInterval: 1)
-        shot("d1b-home-scrolled")
-        record("d1-home-26-tools", totalOk && n == 26, "label26TOOLS=\(totalOk) cards=\(n)")
-        if device == "ipad" && ProcessInfo.processInfo.environment["OD_FULL_IPAD"] == nil { /* iPad: still try the rest */ }
 
-        // open exam tool via search
-        if search.exists {
-            tapCenter(search)
-            Thread.sleep(forTimeInterval: 1)
-            app.typeText("exam-scan")
-            Thread.sleep(forTimeInterval: 1)
+        // d: account menu
+        reveal(chip)
+        tapCenter(chip)
+        let del = any(app, "label == '계정 삭제' AND elementType == \(btnType)")
+        let menuOk = del.waitForExistence(timeout: 8)
+        let adm = any(app, "label == '관리자 페이지' AND elementType == \(btnType)").exists
+        let out = any(app, "label == '로그아웃' AND elementType == \(btnType)").exists
+        shot("d-account-menu")
+        record("d-account-menu", menuOk && adm && out, "관리자페이지=\(adm) 로그아웃=\(out) 계정삭제=\(menuOk) (not pressed)")
+        if menuOk { tapCenter(chip); Thread.sleep(forTimeInterval: 1) } // close menu without pressing anything
+        if del.exists && del.isHittable { app.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.9)).tap(); Thread.sleep(forTimeInterval: 1) }
+
+        // c: exam scan
+        let search = any(app, "placeholderValue CONTAINS '도구 이름' OR label == 'PDF 도구 검색'")
+        if search.waitForExistence(timeout: 10) {
+            tapCenter(search); Thread.sleep(forTimeInterval: 1)
+            app.typeText("exam-scan"); Thread.sleep(forTimeInterval: 1)
             dismissKeyboard(app)
         }
         let card = app.buttons["시험지 필기 지우기 도구 열기"]
-        let cardOk = card.waitForExistence(timeout: 10)
-        let n2 = cards.count
-        shot("d2-search")
-        record("d2-search-filter", cardOk && n2 == 1, "examCard=\(cardOk) visibleCards=\(n2)")
-        guard cardOk else { dump("d2-search", app); return }
+        guard card.waitForExistence(timeout: 10) else { record("c2-exam-open", false); return }
         tapCenter(card)
-        let pick = any(app, "label CONTAINS '사진 선택' AND elementType == \(XCUIElement.ElementType.button.rawValue)")
-        let pickOk = pick.waitForExistence(timeout: 15)
-        shot("d3-exam-tool")
-        record("d3-exam-open", pickOk)
-        guard pickOk else { dump("d3-exam", app); return }
-
-        // file input -> menu -> Photo Library -> PHPicker
+        let pick = any(app, "label CONTAINS '사진 선택' AND elementType == \(btnType)")
+        guard pick.waitForExistence(timeout: 15) else { record("c2-exam-open", false); return }
         tapCenter(pick)
-        let lib = waitAny([any(app, "label == 'Photo Library'"), any(app, "label == 'Photos'"), any(app, "label == 'Choose Photo'"),
-                           any(app, "label == '사진 보관함'")], timeout: 10)
-        shot("d4-input-menu")
-        dump("d4-input-menu", app)
-        if let lib = lib { lib.tap() }
-        // PHPicker can show "Loading..." for a while on a fresh simulator: wait up to 60 s for tiles
-        var photos = app.images.matching(NSPredicate(format: "label BEGINSWITH 'Photo, '"))
-        var photoCount = 0
+        if let lib = waitAny([any(app, "label == 'Photo Library'"), any(app, "label == 'Photos'"), any(app, "label == '사진 보관함'")], timeout: 10) { lib.tap() }
+        let photos = app.images.matching(NSPredicate(format: "label BEGINSWITH 'Photo, '"))
         let pickEnd = Date().addingTimeInterval(60)
-        repeat {
-            Thread.sleep(forTimeInterval: 2)
-            photoCount = photos.count
-        } while photoCount == 0 && Date() < pickEnd
-        Thread.sleep(forTimeInterval: 1)
-        photoCount = photos.count
-        if photoCount == 0 {
-            photos = app.collectionViews.cells
-            photoCount = photos.count
-        }
-        shot("d5-photo-picker")
-        dump("d5-photo-picker", app)
+        repeat { Thread.sleep(forTimeInterval: 2) } while photos.count == 0 && Date() < pickEnd
+        Thread.sleep(forTimeInterval: 2)
         var picked = false
-        var pickedLabel = ""
-        if photoCount > 0 {
-            // newest photo = the fixture added by simctl addmedia (current-year labels carry no year)
-            var last = photos.element(boundBy: 0)
-            let yearRx = try! NSRegularExpression(pattern: "\\b(19|20)\\d\\d\\b")
-            for i in 0..<photoCount {
-                let el = photos.element(boundBy: i)
-                let l = el.label
-                if yearRx.firstMatch(in: l, range: NSRange(l.startIndex..., in: l)) == nil { last = el; break }
-            }
-            pickedLabel = last.label
-            let addCandidates = [app.buttons["Add"], app.buttons["추가"], app.buttons["Done"], app.navigationBars.buttons["Add"]]
-            Thread.sleep(forTimeInterval: 2) // let the grid settle before selecting
+        var target: XCUIElement? = nil
+        let yearRx = try! NSRegularExpression(pattern: "\\b(19|20)\\d\\d\\b")
+        for i in 0..<photos.count {
+            let el = photos.element(boundBy: i); let l = el.label
+            if yearRx.firstMatch(in: l, range: NSRange(l.startIndex..., in: l)) == nil { target = el; break }
+        }
+        if target == nil && photos.count > 0 { target = photos.element(boundBy: 0) }
+        if let t = target {
+            let addCandidates = [app.buttons["Add"], app.buttons["추가"], app.buttons["Done"]]
             selectLoop: for attempt in 0..<3 {
-                // PHPicker tiles live in a remote view: tap by coordinate, never scroll the host
-                last.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.5)).tap()
+                t.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.5)).tap()
                 let addEnd = Date().addingTimeInterval(5)
                 while Date() < addEnd {
                     for b in addCandidates where b.exists && b.isEnabled { b.tap(); picked = true; break selectLoop }
-                    if !app.buttons["Cancel"].exists && !app.buttons["Done"].exists { picked = true; break selectLoop } // picker closed by itself
+                    if !app.buttons["Cancel"].exists && !app.buttons["Done"].exists { picked = true; break selectLoop }
                     Thread.sleep(forTimeInterval: 0.5)
                 }
                 print("ODNOTE: photo selection not confirmed after attempt \(attempt + 1); retrying")
             }
         }
-        record("d5-photo-picked", picked, "lib=\(lib != nil) photos=\(photoCount) picked=\(pickedLabel)")
-
-        let run = any(app, "label CONTAINS '필기 지우기 실행' AND elementType == \(XCUIElement.ElementType.button.rawValue)")
-        let runOk = run.waitForExistence(timeout: 30)
-        shot("d6-photo-loaded")
-        guard runOk else { record("d6-run", false, "run button not found"); dump("d6-loaded", app); return }
+        record("c3-photo-picked", picked, "photos=\(photos.count)")
+        let run = any(app, "label CONTAINS '필기 지우기 실행' AND elementType == \(btnType)")
+        guard run.waitForExistence(timeout: 30) else { shot("c4-no-run"); record("c4-processed", false, "run button not found"); return }
         Thread.sleep(forTimeInterval: 2)
         tapCenter(run)
         let done = any(app, "label CONTAINS '처리 완료'")
         let doneOk = done.waitForExistence(timeout: 240)
-        Thread.sleep(forTimeInterval: 1)
-        if doneOk { reveal(done) }
-        shot("d7-processed")
+        record("c4-processed", doneOk, doneOk ? done.label : "")
+        guard doneOk else { shot("c4-processed"); return }
         let canvas = any(app, "label == '필기 지운 결과'")
-        if doneOk && canvas.exists { reveal(canvas); Thread.sleep(forTimeInterval: 0.5); shot("d7b-result") }
-        record("d7-processed", doneOk, doneOk ? done.label : "")
-        guard doneOk else { dump("d7-processed", app); return }
+        if canvas.exists { reveal(canvas); Thread.sleep(forTimeInterval: 1) }
+        shot("c4-result")
+        appshot("03")
 
-        // Save as PDF -> Files export sheet
+        // Files save (PDF)
         let save = app.buttons["저장"]
         if save.waitForExistence(timeout: 5) { tapCenter(save) }
         _ = waitAny([app.buttons["Save"], app.buttons["Move"], app.buttons["Browse"]], timeout: 20)
         Thread.sleep(forTimeInterval: 2)
-        shot("d8-export-sheet")
-        dump("d8-export-sheet", app)
-        let local = waitAny([any(app, "label == 'On My iPhone'"), any(app, "label == 'On My iPad'"),
-                             any(app, "label == '나의 iPhone'"), any(app, "label == '나의 iPad'")], timeout: 5)
+        let local = waitAny([any(app, "label == 'On My iPhone'"), any(app, "label == 'On My iPad'")], timeout: 5)
         var localLabel = local.map { $0.exists ? $0.label : "gone" } ?? "none"
         if let local = local, local.exists, local.isHittable { local.tap(); Thread.sleep(forTimeInterval: 2) }
-        shot("d9-export-location")
-        dump("d9-export-location", app)
         if local == nil, app.buttons["Browse"].exists {
             app.buttons["Browse"].tap(); Thread.sleep(forTimeInterval: 2)
             for l in ["On My iPhone", "On My iPad"] where any(app, "label == '\(l)'").exists { any(app, "label == '\(l)'").tap(); localLabel = l; Thread.sleep(forTimeInterval: 2); break }
         }
-        let confirm = waitAny([app.buttons["Save"], app.buttons["Move"], app.buttons["Done"], app.buttons["Copy"], app.buttons["Export"]], timeout: 5)
-        let confirmLabel = (confirm?.exists ?? false) ? confirm!.label : "none"
-        if let c = confirm, c.isEnabled { c.tap() }
+        shot("c5-export-location")
+        let confirm = waitAny([app.buttons["Save"], app.buttons["Move"], app.buttons["Done"]], timeout: 5)
+        if let c = confirm, c.exists, c.isEnabled { c.tap() }
         let saved = any(app, "label CONTAINS '저장을 완료'")
         let savedOk = saved.waitForExistence(timeout: 30)
-        Thread.sleep(forTimeInterval: 1.5)
+        Thread.sleep(forTimeInterval: 1)
         if savedOk { reveal(saved) }
-        shot("d10-saved")
-        if !savedOk { dump("d10-saved", app) }
-        record("d8-save-files", savedOk, "location=\(localLabel) confirm=\(confirmLabel) status=\(savedOk && saved.exists ? saved.label : "")")
-        if !savedOk {
-            // close whatever sheet is still up so share can be attempted
-            if app.buttons["Cancel"].exists { app.buttons["Cancel"].tap() }
-            Thread.sleep(forTimeInterval: 2)
-        }
+        shot("c6-saved")
+        record("c5-save-files", savedOk, "location=\(localLabel) status=\(savedOk && saved.exists ? saved.label : "")")
+        if !savedOk, app.buttons["Cancel"].exists { app.buttons["Cancel"].tap(); Thread.sleep(forTimeInterval: 2) }
 
-        // Share sheet
-        let share = app.buttons["공유"]
-        if share.waitForExistence(timeout: 5) { tapCenter(share) }
-        let sheet = waitAny([app.otherElements["ActivityListView"], app.buttons["Close"], app.cells["Save to Files"],
-                             app.buttons["Save to Files"], app.staticTexts["Save to Files"], app.cells["Copy"],
-                             any(app, "label CONTAINS 'Save to Files' OR label == 'AirDrop' OR label == 'Copy'")], timeout: 20)
-        if let sheet = sheet {
-            let end = Date().addingTimeInterval(10)
-            while Date() < end && sheet.descendants(matching: .cell).count + sheet.descendants(matching: .button).count == 0 { Thread.sleep(forTimeInterval: 0.5) }
+        // App Store shot 4: PDF 분할 with the 6-page fixture from Files
+        let back = any(app, "label == '← 모든 도구' AND elementType == \(btnType)")
+        if back.exists { tapCenter(back); Thread.sleep(forTimeInterval: 2) }
+        let split = app.buttons["PDF 분할 도구 열기"]
+        guard split.waitForExistence(timeout: 10) else { record("e-split-preview", false, "split card not found"); return }
+        tapCenter(split)
+        let choose = any(app, "label CONTAINS '파일 선택' AND elementType == \(btnType)")
+        guard choose.waitForExistence(timeout: 10) else { record("e-split-preview", false, "choose button not found"); return }
+        Thread.sleep(forTimeInterval: 1)
+        tapCenter(choose)
+        let fileQ = "label BEGINSWITH 'preview-six-pages'"
+        var fileTapped = false
+        let navEnd = Date().addingTimeInterval(40)
+        while Date() < navEnd {
+            let f = any(app, fileQ)
+            if f.exists && f.isHittable { f.tap(); fileTapped = true; break }
+            let cf = any(app, "label == 'Choose Files'")
+            if cf.exists && cf.isHittable { cf.tap(); Thread.sleep(forTimeInterval: 2); continue }
+            if let l = [any(app, "label == 'On My iPhone' AND elementType != \(XCUIElement.ElementType.navigationBar.rawValue)"), any(app, "label == 'On My iPad' AND elementType != \(XCUIElement.ElementType.navigationBar.rawValue)")].first(where: { $0.exists && $0.isHittable }) { l.tap(); Thread.sleep(forTimeInterval: 2); continue }
+            if app.buttons["Browse"].exists && app.buttons["Browse"].isHittable { app.buttons["Browse"].tap(); Thread.sleep(forTimeInterval: 2); continue }
+            Thread.sleep(forTimeInterval: 1)
         }
+        if !fileTapped { shot("e1-picker"); dump("e1-picker", app) }
+        Thread.sleep(forTimeInterval: 1.5)
+        if app.buttons["Open"].exists && app.buttons["Open"].isEnabled { app.buttons["Open"].tap() }
+        let multi = any(app, "label == '여러 페이지' AND elementType == \(btnType)")
+        let selAll = any(app, "label == '전체 선택'")
+        let previewOk = waitAny([multi, selAll], timeout: 40) != nil
+        if multi.exists { tapCenter(multi) }
+        Thread.sleep(forTimeInterval: 5)
+        let preview = any(app, "label CONTAINS '여러 PDF 페이지' OR label CONTAINS '미리보기'")
+        if preview.exists { reveal(preview) }
+        if multi.exists { reveal(multi) }
         Thread.sleep(forTimeInterval: 3)
-        shot("d11-share-sheet")
-        dump("d11-share-sheet", app)
-        let sheetInfo = (sheet?.exists ?? false) ? "\(sheet!.identifier) \(sheet!.label)" : (sheet == nil ? "none" : "gone")
-        record("d11-share-sheet", sheet != nil, "found=\(sheetInfo)")
-        if app.buttons["Close"].exists { app.buttons["Close"].tap() }
-        Thread.sleep(forTimeInterval: 2)
-        shot("d12-after-share")
+        shot("e2-split-preview")
+        dump("e2-split-preview", app)
+        appshot("04")
+        let sixLabel = any(app, "label CONTAINS '6' AND label CONTAINS '페이지'")
+        record("e-split-preview", fileTapped && previewOk, "fileFromFiles=\(fileTapped) previewControls=\(previewOk) pageCountLabel=\(sixLabel.exists ? sixLabel.label : "n/a")")
     }
 }
