@@ -1,10 +1,10 @@
 {
   "app": "OrunDocs",
   "version": "4.0.0",
-  "versionCode": 4000001,
+  "versionCode": 4000002,
   "package": "com.orundocs.app",
-  "sourceSha256": "1fd325454852b2b9ac95c83ab8764945e121a85406406c53cc283ba51c8c2f75",
-  "sourceBytes": 9180789,
+  "sourceSha256": "5cc35b07d0b26bf043d9a0a8f34e3888dc42f026c0d25ac53c21ec7a4a18de60",
+  "sourceBytes": 9181081,
   "files": [
     {
       "path": "LICENSE",
@@ -34,7 +34,7 @@
     {
       "path": "android/app/build.gradle",
       "bytes": 2380,
-      "sha256": "01b7bce1d12a718631405324cd7fadd7a144012f827e6a5d644bf34117bf9970"
+      "sha256": "15772b86cae0a9e5c9ae78a315820dd32d254080b63861a6b140381c401cd1a6"
     },
     {
       "path": "android/app/capacitor.build.gradle",
@@ -333,13 +333,13 @@
     },
     {
       "path": "frontend-tests/auth-core.test.mjs",
-      "bytes": 5018,
-      "sha256": "3765e220a80f3167b6322ae5cf53c89bbd42595c40d5f0f6d4f65adb9a8f4b73"
+      "bytes": 5252,
+      "sha256": "f802940599e512ecfd34fe4f60068433d80705783afeef64823201417b235703"
     },
     {
       "path": "frontend-tests/build-meta.json",
-      "bytes": 205202,
-      "sha256": "8b5b28b6c7a700b24f52ad479b3493807a2fbcb40289aaed8acc1c05e3084945"
+      "bytes": 175880,
+      "sha256": "75b0e077a82d850eb2474b5146e349ab747a53a91a6cf1e398d84365d1c71439"
     },
     {
       "path": "frontend-tests/exam-scan.test.mjs",
@@ -348,8 +348,8 @@
     },
     {
       "path": "frontend-tests/frontend.test.mjs",
-      "bytes": 7100,
-      "sha256": "56778b5740b86d307914c07d70cb5babffa1019afddc3cc6b8c0f3af1994c02e"
+      "bytes": 7182,
+      "sha256": "6af90cf8b3113e593e3d3d9ece2592232b5a4a8759b01aae48e99ce05c307041"
     },
     {
       "path": "frontend-tests/mime-regression.test.mjs",
@@ -398,8 +398,8 @@
     },
     {
       "path": "public/auth-gate.css",
-      "bytes": 3482,
-      "sha256": "bb2b8b68ef65faf535e3850be34bc5840b4db3feb51038792b62fc96216c1abc"
+      "bytes": 3531,
+      "sha256": "f156b3674d7050e2100e5d77458d4a451118bd3ca8a8cf884cbc8dbf45d43fe6"
     },
     {
       "path": "public/exam-scan.css",
@@ -408,8 +408,8 @@
     },
     {
       "path": "public/index.html",
-      "bytes": 6469,
-      "sha256": "b19ead63e2a31eb48513cdb732d0897c95b949e513fa24b82a505ef07011b8c8"
+      "bytes": 6508,
+      "sha256": "e99a6614eb38470aa6fc3ba6aaeb116b73d257da71029dec4cf1074b5481def6"
     },
     {
       "path": "public/open-source-notices.txt",
@@ -1508,13 +1508,13 @@
     },
     {
       "path": "src/auth/auth-gate.js",
-      "bytes": 9317,
-      "sha256": "96602c75dc7f3d7d65482ba8433af402e06aef747074849090dc7b21b489cb7b"
+      "bytes": 9992,
+      "sha256": "a29855c01053b8638cad5f122ed1bb4424b4cb0e22f51145f42c6255b72008d4"
     },
     {
       "path": "src/auth/orundocs-auth-core.mjs",
-      "bytes": 6185,
-      "sha256": "5237f8aae74b3915750cb5fbc48647c9828b82b3c05840a74399ba1acda08601"
+      "bytes": 7734,
+      "sha256": "ef74cbe91f7b0bd38cce6f6934fed739072dfae8eb35e4a6b4940e591a6af26c"
     },
     {
       "path": "src/exam-scan-core.mjs",
