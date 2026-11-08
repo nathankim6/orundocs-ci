@@ -40,6 +40,9 @@ jobs:
           xcodebuild -version
           mkdir -p "$RUNNER_TEMP/od" && tar -xzf ios-ci/src.tar.gz -C "$RUNNER_TEMP/od"
           cd "$RUNNER_TEMP/od"
+          # the three splash PNGs are identical; only one is shipped in src.tar.gz (upload size limit)
+          SP=ios/App/App/Assets.xcassets/Splash.imageset
+          for n in 1 2; do [ -f "$SP/splash-2732x2732-$n.png" ] || cp "$SP/splash-2732x2732.png" "$SP/splash-2732x2732-$n.png"; done
           npm ci --no-audit --no-fund
           node scripts/build-android.cjs
           npx cap sync ios
@@ -119,7 +122,6 @@ jobs:
     runs-on: macos-15
     timeout-minutes: 90
     env:
-      TEST_RUNNER_OD_TEST_RT: ${{ secrets.OD_TEST_REFRESH_TOKEN }}
       TEST_RUNNER_OD_REVIEW_EMAIL: ${{ secrets.OD_REVIEW_EMAIL }}
       TEST_RUNNER_OD_REVIEW_PASSWORD: ${{ secrets.OD_REVIEW_PASSWORD }}
     steps:
@@ -138,9 +140,36 @@ jobs:
           xcodebuild -version
           mkdir -p "$RUNNER_TEMP/od" && tar -xzf ios-ci/src.tar.gz -C "$RUNNER_TEMP/od"
           cd "$RUNNER_TEMP/od"
+          # the three splash PNGs are identical; only one is shipped in src.tar.gz (upload size limit)
+          SP=ios/App/App/Assets.xcassets/Splash.imageset
+          for n in 1 2; do [ -f "$SP/splash-2732x2732-$n.png" ] || cp "$SP/splash-2732x2732.png" "$SP/splash-2732x2732-$n.png"; done
           npm ci --no-audit --no-fund
           node scripts/build-android.cjs
           npx cap sync ios
+      - name: Fresh review-account refresh token for the debug-hook fallback (never printed)
+        env:
+          RE: ${{ secrets.OD_REVIEW_EMAIL }}
+          RP: ${{ secrets.OD_REVIEW_PASSWORD }}
+          OLD_RT: ${{ secrets.OD_TEST_REFRESH_TOKEN }}
+        run: |
+          python3 - <<'PYEOF'
+          import json, os, re, urllib.request
+          src = open(os.path.join(os.environ["RUNNER_TEMP"], "od/src/auth/orundocs-auth-core.mjs"), encoding="utf-8").read()
+          key = re.search(r"apiKey:\s*['\"]([^'\"]+)", src).group(1)
+          body = json.dumps({"email": os.environ["RE"], "password": os.environ["RP"], "returnSecureToken": True}).encode()
+          try:
+              r = urllib.request.urlopen(urllib.request.Request("https://identitytoolkit.googleapis.com/v1/accounts:signInWithPassword?key=" + key, data=body, headers={"content-type": "application/json"}), timeout=30)
+              rt = json.load(r).get("refreshToken", "")
+          except Exception as e:
+              rt = ""; print("signInWithPassword failed:", type(e).__name__)
+          if rt:
+              print("::add-mask::" + rt)
+              with open(os.environ["GITHUB_ENV"], "a") as f: f.write("TEST_RUNNER_OD_TEST_RT=" + rt + "\n")
+              print("fresh review refresh token obtained (masked)")
+          elif os.environ.get("OLD_RT"):
+              with open(os.environ["GITHUB_ENV"], "a") as f: f.write("TEST_RUNNER_OD_TEST_RT=" + os.environ["OLD_RT"] + "\n")
+              print("using stored OD_TEST_REFRESH_TOKEN secret")
+          PYEOF
       - name: Add UI test target (CI copy only)
         working-directory: ${{ runner.temp }}/od/ios/App
         run: |
@@ -223,6 +252,9 @@ jobs:
                       p = os.path.join(dp, f)
                       if f.endswith((".log", ".txt")):
                           s = open(p, "rb").read(); o = s
+                          if f.endswith(".log"):
+                              # XCTest echoes typed text ("Type '...' into"): drop those lines entirely
+                              s = b"\n".join(l for l in s.split(b"\n") if b"Type '" not in l and b"typeText" not in l)
                           for tok in toks:
                               for v in {tok, tok.lower()}:
                                   s = s.replace(v.encode(), b"***")
