@@ -258,7 +258,7 @@ final class OrunUITests: XCTestCase {
         var unlocked = false
         while Date() < end {
             if chip.exists { unlocked = true; break }
-            for b in [springboard.buttons["Not Now"], safariVS.buttons["Not Now"], app.buttons["Not Now"], safariVS.buttons["나중에"]] where b.exists && b.isHittable { b.tap() }
+            // a system "Save Password?" prompt may appear; it is not tapped (tapping it races with its auto-dismissal)
             Thread.sleep(forTimeInterval: 1)
         }
         Thread.sleep(forTimeInterval: 1.5)
@@ -274,6 +274,8 @@ final class OrunUITests: XCTestCase {
     func test3_ExamFilesMenu() {
         var app = XCUIApplication()
         currentApp = app
+        app.terminate()
+        Thread.sleep(forTimeInterval: 3)
         app.launch()
         var chip = accountChip(app)
         var via = "persisted real sign-in session"
