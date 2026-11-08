@@ -20,7 +20,7 @@ concurrency:
   cancel-in-progress: false
 
 env:
-  SOURCE_SHA256: 1fd325454852b2b9ac95c83ab8764945e121a85406406c53cc283ba51c8c2f75
+  SOURCE_SHA256: 5cc35b07d0b26bf043d9a0a8f34e3888dc42f026c0d25ac53c21ec7a4a18de60
 
 defaults:
   run:
@@ -69,7 +69,7 @@ jobs:
         working-directory: orundocs/project/android
         run: |
           chmod +x gradlew
-          ./gradlew :app:assembleRelease :app:assembleReleaseAndroidTest -PsmokeBuildType=release --no-daemon --console=plain --max-workers=2
+          ./gradlew :app:assembleRelease :app:assembleReleaseAndroidTest :app:bundleRelease -PsmokeBuildType=release --no-daemon --console=plain --max-workers=2
       - name: Prepare unsigned APKs and public build metadata
         shell: bash
         run: |
@@ -80,13 +80,14 @@ jobs:
           test -n "$TEST_APK"
           cp "$TEST_APK" ci-output/build/app-release-androidTest.apk
           cp source-manifest.json ci-output/build/source-manifest.json
+          cp project/android/app/build/outputs/bundle/release/app-release.aab ci-output/build/app-release-unsigned.aab
           unzip -p ci-output/build/app-release-unsigned.apk assets/public/open-source-notices.txt > ci-output/build/open-source-notices.txt
           grep -q 'docx@9.5.1' ci-output/build/open-source-notices.txt
           grep -q 'pptxgenjs@4.0.1' ci-output/build/open-source-notices.txt
           grep -q 'exceljs@4.4.0' ci-output/build/open-source-notices.txt
           grep -q 'Permission is hereby granted' ci-output/build/open-source-notices.txt
           "$ANDROID_HOME/build-tools/36.0.0/aapt2" dump badging ci-output/build/app-release-unsigned.apk > ci-output/build/release-badging.txt
-          grep -q "package: name='com.orundocs.app'.*versionCode='4000001'.*versionName='4.0.0'" ci-output/build/release-badging.txt
+          grep -q "package: name='com.orundocs.app'.*versionCode='4000002'.*versionName='4.0.0'" ci-output/build/release-badging.txt
           if grep -q '^application-debuggable' ci-output/build/release-badging.txt; then echo 'Release is debuggable'; exit 1; fi
           sha256sum ci-output/build/*.apk > ci-output/build/SHA256SUMS
           test "$(du -sm ci-output/build | cut -f1)" -lt 80
@@ -134,7 +135,7 @@ jobs:
           "$ANDROID_HOME/build-tools/36.0.0/apksigner" verify --verbose --print-certs app-release-androidTest.apk > test-signature.txt
           diff <(grep 'certificate SHA-256 digest:' app-signature.txt) <(grep 'certificate SHA-256 digest:' test-signature.txt)
           "$ANDROID_HOME/build-tools/36.0.0/aapt2" dump badging app-release.apk > release-badging.txt
-          grep -q "package: name='com.orundocs.app'.*versionCode='4000001'.*versionName='4.0.0'" release-badging.txt
+          grep -q "package: name='com.orundocs.app'.*versionCode='4000002'.*versionName='4.0.0'" release-badging.txt
           if grep -q '^application-debuggable' release-badging.txt; then echo 'Release is debuggable'; exit 1; fi
       - name: Start clean standard Android emulator
         shell: bash
