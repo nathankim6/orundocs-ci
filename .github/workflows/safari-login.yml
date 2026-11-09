@@ -1,0 +1,25 @@
+name: Safari desktop sign-in check
+on: workflow_dispatch
+permissions: { contents: read }
+jobs:
+  safari:
+    runs-on: macos-15
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+        with: { persist-credentials: false }
+      - name: Safari version
+        run: /usr/libexec/PlistBuddy -c "Print CFBundleShortVersionString" /Applications/Safari.app/Contents/Info.plist
+      - name: Enable safaridriver
+        run: |
+          sudo safaridriver --enable
+          safaridriver -p 4444 &
+          sleep 3
+      - name: Drive Safari through sign-in + loopback
+        env:
+          OD_REVIEW_EMAIL: ${{ secrets.OD_REVIEW_EMAIL }}
+          OD_REVIEW_PASSWORD: ${{ secrets.OD_REVIEW_PASSWORD_V2 }}
+        run: node safari-ci/safari-login.cjs "$RUNNER_TEMP/safari-out"
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        if: always()
+        with: { name: safari-login, path: "${{ runner.temp }}/safari-out", retention-days: 1 }
