@@ -33,5 +33,8 @@ def run(name, maxside):
     return Image.fromarray(r), dt, im2.size
 for base in ['photo1','photo2','photo3']:
     for ms in [1500,1100]:
+        r,dt,sz=run(base+'-current.png',ms); r.save(f'out/{base}-post-{ms}.png'); print(base,'post',ms,sz,f'{dt:.1f}s')
+for base in []:
+    for ms in [1500,1100]:
         r,dt,sz=run(base+'-normalized.png',ms); r.save(f'out/{base}-ai-{ms}.png'); print(base,'ai',ms,sz,f'{dt:.1f}s')
-    r,dt,sz=run(base+'-coloronly.png',1500); r.save(f'out/{base}-hybrid-1500.png'); print(base,'hybrid',sz,f'{dt:.1f}s')
+        pass
