@@ -1,10 +1,10 @@
 {
   "app": "OrunDocs",
   "version": "4.0.0",
-  "versionCode": 4000002,
+  "versionCode": 4000003,
   "package": "com.orundocs.app",
-  "sourceSha256": "3b5a5497c5b95951b6615e82e6b0e55c3c3a13ee62473cf557d267a9119f9d58",
-  "sourceBytes": 9599689,
+  "sourceSha256": "23be3c5e0f76c353b071b1c40ecf588e4682242c9375e923fdbe775402b71579",
+  "sourceBytes": 9600913,
   "files": [
     {
       "path": "LICENSE",
@@ -34,7 +34,7 @@
     {
       "path": "android/app/build.gradle",
       "bytes": 2380,
-      "sha256": "15772b86cae0a9e5c9ae78a315820dd32d254080b63861a6b140381c401cd1a6"
+      "sha256": "54eeaf76e12cd7d1c18912955c7deef05e261b62eade2880effa195e94ed2f56"
     },
     {
       "path": "android/app/capacitor.build.gradle",
@@ -1543,8 +1543,8 @@
     },
     {
       "path": "src/exam-scan-core.mjs",
-      "bytes": 24074,
-      "sha256": "7ca65b6e4f9879d3da6edf161348167effed6bfc15aefc2d0179af196bb058fa"
+      "bytes": 28145,
+      "sha256": "7fd0cabe9e3b8b2ea6cea4fb03b404f536104f806b39fa6a7e1ab0793063a9f0"
     },
     {
       "path": "src/exam-scan-export.mjs",
