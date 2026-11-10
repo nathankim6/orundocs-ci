@@ -15,6 +15,10 @@ on:
         description: "Also run the iPad simulator"
         type: boolean
         default: true
+      review_video:
+        description: "Record the App Review screen recording (iPhone only, replaces the normal suite)"
+        type: boolean
+        default: false
 
 permissions:
   contents: read
@@ -213,7 +217,67 @@ jobs:
           print("iphone="+a["udid"]); print("ipad="+b["udid"])
           print("names="+a["name"]+" / "+b["name"]+" / "+rts[-1])
           ' | tee -a "$GITHUB_OUTPUT"
+      - name: App Review screen recording (iPhone)
+        if: ${{ inputs.review_video }}
+        working-directory: ${{ runner.temp }}/od/ios/App
+        env:
+          TEST_RUNNER_OD_RECORD: "1"
+          TEST_RUNNER_OD_DEMO_EMAIL: ${{ secrets.OD_DEMO_DELETE_EMAIL }}
+          TEST_RUNNER_OD_DEMO_PASSWORD: ${{ secrets.OD_DEMO_DELETE_PASSWORD }}
+        run: |
+          set +e
+          udid="${{ steps.sims.outputs.iphone }}"
+          R="$RUNNER_TEMP/out/review"; S="$RUNNER_TEMP/out/shots/iphone"
+          mkdir -p "$R/frames" "$S"
+          command -v ffmpeg >/dev/null || brew install ffmpeg >/dev/null 2>&1
+          ffmpeg -version | head -1
+          xcrun simctl boot "$udid" || true
+          xcrun simctl bootstatus "$udid" -b
+          xcrun simctl addmedia "$udid" "$GITHUB_WORKSPACE/ios-ci/fixtures/exam-photo.jpg"
+          xcrun simctl status_bar "$udid" override --time 9:41 --dataNetwork wifi --wifiMode active --wifiBars 3 --cellularMode active --cellularBars 4 --batteryState charged --batteryLevel 100
+          xcrun simctl uninstall "$udid" com.orundocs.app || true
+          sleep 3
+          xcrun simctl io "$udid" recordVideo --codec=h264 --force "$R/raw.mp4" > "$R/record.log" 2>&1 &
+          REC=$!
+          for i in $(seq 1 30); do grep -qi "recording started" "$R/record.log" && break; sleep 0.5; done
+          python3 -c 'import time;print("%.3f" % time.time())' > "$R/start.txt"
+          cat "$R/record.log"
+          TEST_RUNNER_OD_SHOTS="$S" xcodebuild test-without-building -project App.xcodeproj -scheme AppUITests \
+            -destination "id=$udid" -derivedDataPath "$RUNNER_TEMP/dd" -resultBundlePath "$RUNNER_TEMP/xcresult-review" \
+            -only-testing:AppUITests/OrunUITests/test9_ReviewRecording > "$RUNNER_TEMP/out/test-review.log" 2>&1
+          echo "xcodebuild exit=$?"
+          sleep 2
+          kill -INT $REC; wait $REC
+          grep -E "ODRESULT|Test Case .*(passed|failed)|error:" "$RUNNER_TEMP/out/test-review.log" | head -40
+          cat "$S/markers.txt" || true
+          ls -la "$R"
+          python3 - "$R" "$S/markers.txt" <<'PYEOF'
+          import os, subprocess, sys, json
+          R, M = sys.argv[1], sys.argv[2]
+          start = float(open(os.path.join(R, "start.txt")).read().strip())
+          marks = [(float(l.split(" ", 1)[0]) - start, l.split(" ", 1)[1].strip()) for l in open(M) if l.strip()] if os.path.exists(M) else []
+          first = dict((n, t) for t, n in marks)
+          t0 = max(0.0, first["01-home-screen"] - 1.5) if "01-home-screen" in first else (max(0.0, first["02-gate"] - 5.0) if "02-gate" in first else 0.0)
+          raw, out = os.path.join(R, "raw.mp4"), os.path.join(R, "orundocs-review.mp4")
+          def enc(h, crf):
+              subprocess.run(["ffmpeg", "-y", "-loglevel", "error", "-ss", "%.2f" % t0, "-i", raw, "-vf", "fps=30,scale=-2:%d" % h,
+                              "-c:v", "libx264", "-preset", "medium", "-crf", str(crf), "-pix_fmt", "yuv420p", "-an", "-movflags", "+faststart", out], check=True)
+          enc(1920, 26)
+          if os.path.getsize(out) > 58 * 1024 * 1024: enc(1080, 28)
+          dur = subprocess.run(["ffprobe", "-v", "error", "-show_entries", "format=duration", "-of", "csv=p=0", out], capture_output=True, text=True).stdout.strip()
+          for t, n in marks:
+              off = t - t0 + 0.4
+              if off > 0:
+                  subprocess.run(["ffmpeg", "-y", "-loglevel", "error", "-ss", "%.2f" % off, "-i", out, "-frames:v", "1", os.path.join(R, "frames", n + ".png")])
+          info = {"trim_start_s": round(t0, 2), "duration_s": dur, "size_bytes": os.path.getsize(out), "markers": [[n, round(t - t0, 2)] for t, n in marks]}
+          json.dump(info, open(os.path.join(R, "video-info.json"), "w"), indent=1, ensure_ascii=False)
+          print(json.dumps(info, ensure_ascii=False))
+          PYEOF
+          rm -f "$R/raw.mp4"
+          shasum -a 256 "$R/orundocs-review.mp4" | tee "$R/sha256.txt"
+          cat "$S"/results-*.txt || true
       - name: UI tests on iPhone and iPad
+        if: ${{ !inputs.review_video }}
         working-directory: ${{ runner.temp }}/od/ios/App
         run: |
           set +e
@@ -286,4 +350,5 @@ jobs:
           retention-days: 14
           path: |
             ${{ runner.temp }}/out/shots
+            ${{ runner.temp }}/out/review
             ${{ runner.temp }}/out/*.log
