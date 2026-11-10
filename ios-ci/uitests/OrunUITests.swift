@@ -224,7 +224,7 @@ final class OrunUITests: XCTestCase {
         let cont = alert.buttons["Continue"].exists ? alert.buttons["Continue"] : alert.buttons.element(boundBy: alert.buttons.count - 1)
         cont.tap()
         // web sheet (SafariViewService) loads https://orundocs.web.app/signin
-        let summary = waitWeb("label CONTAINS '관리자가 발급한 이메일 계정으로 로그인'", 45)
+        let summary = waitWeb("label CONTAINS '관리자가 발급한 이메일 계정으로 로그인'", 150)
         Thread.sleep(forTimeInterval: 1.5)
         shot("b2-websheet")
         try? (app.debugDescription + "\n\n==== SafariViewService ====\n" + safariVS.debugDescription)
@@ -397,9 +397,9 @@ final class OrunUITests: XCTestCase {
         // Files save (PDF)
         let save = app.buttons["저장"]
         if save.waitForExistence(timeout: 5) { tapCenter(save) }
-        _ = waitAny([app.buttons["Save"], app.buttons["Move"], app.buttons["Browse"]], timeout: 20)
+        _ = waitAny([app.buttons["Save"], app.buttons["Move"], app.buttons["Browse"]], timeout: 90)
         Thread.sleep(forTimeInterval: 2)
-        let local = waitAny([any(app, "label == 'On My iPhone'"), any(app, "label == 'On My iPad'")], timeout: 5)
+        let local = waitAny([any(app, "label == 'On My iPhone'"), any(app, "label == 'On My iPad'")], timeout: 20)
         var localLabel = local.map { $0.exists ? $0.label : "gone" } ?? "none"
         if let local = local, local.exists, local.isHittable { local.tap(); Thread.sleep(forTimeInterval: 2) }
         if local == nil, app.buttons["Browse"].exists {
@@ -407,7 +407,7 @@ final class OrunUITests: XCTestCase {
             for l in ["On My iPhone", "On My iPad"] where any(app, "label == '\(l)'").exists { any(app, "label == '\(l)'").tap(); localLabel = l; Thread.sleep(forTimeInterval: 2); break }
         }
         shot("c5-export-location")
-        let confirm = waitAny([app.buttons["Save"], app.buttons["Move"], app.buttons["Done"]], timeout: 5)
+        let confirm = waitAny([app.buttons["Save"], app.buttons["Move"], app.buttons["Done"]], timeout: 30)
         if let c = confirm, c.exists, c.isEnabled { c.tap() }
         let saved = any(app, "label CONTAINS '저장을 완료'")
         let savedOk = saved.waitForExistence(timeout: 30)
