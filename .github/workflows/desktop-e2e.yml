@@ -52,8 +52,21 @@ jobs:
         shell: pwsh
         env:
           OD_REVIEW_EMAIL: ${{ secrets.OD_REVIEW_EMAIL }}
-          OD_REVIEW_PASSWORD: ${{ secrets.OD_REVIEW_PASSWORD }}
+          OD_REVIEW_PASSWORD: ${{ secrets.OD_REVIEW_PASSWORD_V2 }}
         run: node ci-desktop/win-flow.cjs "$env:RUNNER_TEMP\bin\OrunDocs-Setup-4.0.0-x64.exe" "$env:RUNNER_TEMP\evidence-windows"
+      - name: Sanitize evidence (strip add-mask lines and token-like strings before upload)
+        if: always()
+        shell: pwsh
+        run: |
+          $root = "$env:RUNNER_TEMP\evidence-windows"
+          if (Test-Path $root) {
+            Get-ChildItem $root -Recurse -File -Include *.txt,*.json,*.log | ForEach-Object {
+              $c = Get-Content -LiteralPath $_.FullName -Raw -Encoding utf8
+              $n = ($c -split "`n" | Where-Object { $_ -notmatch '::add-mask::' }) -join "`n"
+              $n = $n -replace 'AMf-v[A-Za-z0-9_-]{20,}', '[REDACTED]' -replace 'eyJhbGci[A-Za-z0-9._-]{20,}', '[REDACTED]'
+              if ($n -ne $c) { Set-Content -LiteralPath $_.FullName -Value $n -Encoding utf8 -NoNewline; "sanitized $($_.Name)" }
+            }
+          }
       - name: Upload evidence
         if: always()
         uses: actions/upload-artifact@v4
@@ -90,8 +103,18 @@ jobs:
       - name: Verify, install, E2E, build DMG
         env:
           OD_REVIEW_EMAIL: ${{ secrets.OD_REVIEW_EMAIL }}
-          OD_REVIEW_PASSWORD: ${{ secrets.OD_REVIEW_PASSWORD }}
+          OD_REVIEW_PASSWORD: ${{ secrets.OD_REVIEW_PASSWORD_V2 }}
         run: bash ci-desktop/mac-flow.sh "$RUNNER_TEMP/bin/OrunDocs-4.0.0-mac-arm64-notarized.zip" "$RUNNER_TEMP/evidence-macos" "$RUNNER_TEMP/dmg"
+      - name: Sanitize evidence (strip add-mask lines and token-like strings before upload)
+        if: always()
+        run: |
+          root="$RUNNER_TEMP/evidence-macos"
+          [ -d "$root" ] && find "$root" -type f \( -name '*.txt' -o -name '*.json' -o -name '*.log' -o -name '*.tsv' \) -print0 | while IFS= read -r -d '' f; do
+            if grep -qE '::add-mask::|AMf-v[A-Za-z0-9_-]{20}|eyJhbGci[A-Za-z0-9._-]{20}' "$f"; then
+              sed -i '' -E '/::add-mask::/d; s/AMf-v[A-Za-z0-9_-]{20,}/[REDACTED]/g; s/eyJhbGci[A-Za-z0-9._-]{20,}/[REDACTED]/g' "$f"; echo "sanitized $f"
+            fi
+          done
+          true
       - name: Upload evidence
         if: always()
         uses: actions/upload-artifact@v4
