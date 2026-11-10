@@ -11,6 +11,10 @@ on:
         description: "Run simulator UI tests"
         type: boolean
         default: true
+      ipad:
+        description: "Also run the iPad simulator"
+        type: boolean
+        default: true
 
 permissions:
   contents: read
@@ -70,6 +74,7 @@ jobs:
             done
             echo "UIDeviceFamily = $(/usr/libexec/PlistBuddy -c 'Print :UIDeviceFamily' "$P" | tr -d '\n ')"
             echo "public/index.html present: $(test -f "$APP/public/index.html" && echo yes || echo no)"
+            echo "EXAM_SCAN_WORKER_SHA256=$(shasum -a 256 "$APP/public/exam-scan-worker.js" | cut -d' ' -f1)"
             echo "codesign: $(codesign -dv "$APP" 2>&1 | head -1 || true)"
             if grep -rl "OD_TEST_RT" "$APP" "$RUNNER_TEMP/out/OrunDocs.xcarchive" ; then echo "OD_TEST_RT_IN_RELEASE=FOUND"; else echo "OD_TEST_RT_IN_RELEASE=absent"; fi
             if grep -rl "installTestSessionHook" "$APP"; then echo "HOOK_SYMBOL_IN_RELEASE=FOUND"; else echo "HOOK_SYMBOL_IN_RELEASE=absent"; fi
@@ -79,7 +84,7 @@ jobs:
           test "$(/usr/libexec/PlistBuddy -c 'Print :CFBundleIdentifier' "$P")" = "com.orundocs.app"
           test "$(/usr/libexec/PlistBuddy -c 'Print :CFBundleShortVersionString' "$P")" = "4.0.0"
           test "$(/usr/libexec/PlistBuddy -c 'Print :CFBundleDisplayName' "$P")" = "OrunDocs"
-          test "$(/usr/libexec/PlistBuddy -c 'Print :CFBundleVersion' "$P")" = "2"
+          test "$(/usr/libexec/PlistBuddy -c 'Print :CFBundleVersion' "$P")" = "3"
           grep -q "OD_TEST_RT_IN_RELEASE=absent" "$V"
           python3 - "$APP/public" <<'PYEOF' | tee -a "$V"
           import sys, os
@@ -105,15 +110,15 @@ jobs:
           grep -q "LOGIN_BUTTON_IN_RELEASE=present" "$V"
           grep -q "CSP_IDENTITYTOOLKIT=present" "$V"
           cd "$RUNNER_TEMP/out"
-          ditto -c -k --sequesterRsrc --keepParent OrunDocs.xcarchive OrunDocs-4.0.0-build2-unsigned.xcarchive.zip
-          shasum -a 256 OrunDocs-4.0.0-build2-unsigned.xcarchive.zip | tee -a "$V"
+          ditto -c -k --sequesterRsrc --keepParent OrunDocs.xcarchive OrunDocs-4.0.0-build3-unsigned.xcarchive.zip
+          shasum -a 256 OrunDocs-4.0.0-build3-unsigned.xcarchive.zip | tee -a "$V"
       - uses: actions/upload-artifact@v4
         if: always()
         with:
           name: orundocs-ios-unsigned-xcarchive
           retention-days: 14
           path: |
-            ${{ runner.temp }}/out/OrunDocs-4.0.0-build2-unsigned.xcarchive.zip
+            ${{ runner.temp }}/out/OrunDocs-4.0.0-build3-unsigned.xcarchive.zip
             ${{ runner.temp }}/out/verify.txt
             ${{ runner.temp }}/out/archive.log
 
@@ -233,7 +238,7 @@ jobs:
             xcrun simctl shutdown "$udid" || true
           }
           run_dev iphone "${{ steps.sims.outputs.iphone }}"
-          run_dev ipad "${{ steps.sims.outputs.ipad }}"
+          if [ "${{ inputs.ipad }}" = "true" ]; then run_dev ipad "${{ steps.sims.outputs.ipad }}"; else echo "iPad skipped (input ipad=false)"; fi
           cat "$RUNNER_TEMP"/out/shots/*/results-*.txt || true
       - name: Redact secret from evidence files
         if: always()
