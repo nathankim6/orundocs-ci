@@ -502,4 +502,185 @@ final class OrunUITests: XCTestCase {
         let sixLabel = any(app, "label CONTAINS '6' AND label CONTAINS '페이지'")
         record("e-split-preview", fileTapped && previewOk, "fileFromFiles=\(fileTapped) previewControls=\(previewOk) pageCountLabel=\(sixLabel.exists ? sixLabel.label : "n/a")")
     }
+
+    // MARK: App Review screen recording flow (runs only with OD_RECORD=1; screen is recorded by simctl on the host)
+    private func beat(_ t: TimeInterval = 1.3) { Thread.sleep(forTimeInterval: t) }
+    private func mark(_ step: String) {
+        let line = String(format: "%.3f %@\n", Date().timeIntervalSince1970, step)
+        let url = outDir.appendingPathComponent("markers.txt")
+        if let h = try? FileHandle(forWritingTo: url) { h.seekToEndOfFile(); h.write(line.data(using: .utf8)!); try? h.close() }
+        else { try? line.write(to: url, atomically: true, encoding: .utf8) }
+        shot("rv-" + step)
+    }
+
+    func test9_ReviewRecording() {
+        let env = ProcessInfo.processInfo.environment
+        guard env["OD_RECORD"] == "1" else { return }
+        guard let em = env["OD_DEMO_EMAIL"], let pw = env["OD_DEMO_PASSWORD"], !em.isEmpty, !pw.isEmpty else {
+            record("rv-credentials", false, "demo credentials missing"); return
+        }
+        let app = XCUIApplication()
+        currentApp = app
+        // 1. launch from the Home Screen
+        XCUIDevice.shared.press(.home)
+        beat(2)
+        var fromHome = false
+        let icon = springboard.icons["OrunDocs"]
+        for _ in 0..<4 {
+            if icon.exists && icon.isHittable { break }
+            springboard.swipeLeft(); beat(1)
+        }
+        if icon.exists && icon.isHittable { mark("01-home-screen"); icon.tap(); fromHome = true } else { app.launch() }
+        _ = app.wait(for: .runningForeground, timeout: 30)
+        let login = loginButton(app)
+        let gateOk = login.waitForExistence(timeout: 60)
+        beat(2)
+        mark("02-gate")
+        record("rv-1-launch-gate", gateOk, "fromHomeScreen=\(fromHome)")
+        guard gateOk else { return }
+
+        // 2. real sign-in with the deletion demo account
+        guard let alert = tapLoginUntilConsent(app, login) else { record("rv-2-signin", false, "consent prompt not shown"); return }
+        beat(1.5)
+        mark("03-consent")
+        (alert.buttons["Continue"].exists ? alert.buttons["Continue"] : alert.buttons.element(boundBy: alert.buttons.count - 1)).tap()
+        guard let summary = waitWeb("label CONTAINS '관리자가 발급한 이메일 계정으로 로그인'", 150) else { mark("03b-websheet-missing"); record("rv-2-signin", false, "web sign-in page not loaded"); return }
+        beat(1.5)
+        mark("04-web-signin")
+        let tf = XCUIElement.ElementType.textField.rawValue, stf = XCUIElement.ElementType.secureTextField.rawValue
+        var emailField: XCUIElement? = nil
+        for attempt in 0..<4 {
+            if attempt < 2 { summary.tap() } else { summary.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.5)).tap() }
+            emailField = waitWeb("elementType == \(tf) AND (placeholderValue == '이메일' OR label == '이메일')", 6)
+            if emailField != nil { break }
+        }
+        guard let ef = emailField else { record("rv-2-signin", false, "email form not expanded"); return }
+        beat()
+        let emailOk = typeInto(ef, em, secure: false)
+        guard let pf = waitWeb("elementType == \(stf)", 10) else { record("rv-2-signin", false, "password field missing"); return }
+        let pwOk = typeInto(pf, pw, secure: true)
+        beat()
+        mark("05-credentials-typed")
+        if pwOk && hasFocus(pf) { pf.typeText("\n") }
+        beat(3)
+        if let submit = web("label == '이메일로 로그인' AND elementType == \(btnType)"), submit.isHittable, !any(app, "label CONTAINS[c] '\(em.lowercased())'").exists { submit.tap() }
+        let chip = any(app, "label CONTAINS[c] '\(em.lowercased())' AND elementType == \(btnType)")
+        let end = Date().addingTimeInterval(120)
+        var dismissed = false
+        while Date() < end && !chip.exists {
+            let savePw = app.alerts.matching(NSPredicate(format: "label CONTAINS 'Save Password'")).firstMatch
+            if savePw.exists, savePw.buttons["Not Now"].exists {
+                let f = savePw.buttons["Not Now"].frame
+                if !f.isEmpty { if !dismissed { mark("06-save-password-prompt") }; beat(1); app.coordinate(withNormalizedOffset: .zero).withOffset(CGVector(dx: f.midX, dy: f.midY)).tap(); dismissed = true }
+                beat(2)
+            }
+            Thread.sleep(forTimeInterval: 1)
+        }
+        beat(2)
+        mark("07-unlocked")
+        record("rv-2-signin", emailOk && pwOk && chip.exists, "emailTyped=\(emailOk) pwTyped=\(pwOk) savePasswordDismissed=\(dismissed) unlocked=\(chip.exists)")
+        guard chip.exists else { return }
+
+        // 3. home -> exam scan -> result -> save -> share
+        let total = any(app, "label CONTAINS '26 TOOLS'")
+        if total.waitForExistence(timeout: 10) { reveal(total); beat(2); mark("08-tool-library") }
+        let card = app.buttons["시험지 필기 지우기 도구 열기"]
+        guard card.waitForExistence(timeout: 10) else { record("rv-3-exam", false, "exam card missing"); return }
+        reveal(card); beat(); tapCenter(card)
+        let pick = any(app, "label CONTAINS '사진 선택' AND elementType == \(btnType)")
+        guard pick.waitForExistence(timeout: 15) else { record("rv-3-exam", false, "exam tool not opened"); return }
+        beat(1.5); mark("09-exam-tool")
+        tapCenter(pick)
+        if let lib = waitAny([any(app, "label == 'Photo Library'"), any(app, "label == 'Photos'")], timeout: 10) { beat(); lib.tap() }
+        let photos = app.images.matching(NSPredicate(format: "label BEGINSWITH 'Photo, '"))
+        let pickEnd = Date().addingTimeInterval(60)
+        repeat { Thread.sleep(forTimeInterval: 2) } while photos.count == 0 && Date() < pickEnd
+        beat(2)
+        var target: XCUIElement? = nil
+        let yearRx = try! NSRegularExpression(pattern: "\\b(19|20)\\d\\d\\b")
+        for i in 0..<photos.count {
+            let el = photos.element(boundBy: i); let l = el.label
+            if yearRx.firstMatch(in: l, range: NSRange(l.startIndex..., in: l)) == nil { target = el; break }
+        }
+        if target == nil && photos.count > 0 { target = photos.element(boundBy: 0) }
+        mark("10-photo-picker")
+        if let t = target {
+            selectLoop: for _ in 0..<3 {
+                t.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.5)).tap()
+                let addEnd = Date().addingTimeInterval(5)
+                while Date() < addEnd {
+                    for b in [app.buttons["Add"], app.buttons["Done"]] where b.exists && b.isEnabled { beat(1); b.tap(); break selectLoop }
+                    if !app.buttons["Cancel"].exists && !app.buttons["Done"].exists { break selectLoop }
+                    Thread.sleep(forTimeInterval: 0.5)
+                }
+            }
+        }
+        let run = any(app, "label CONTAINS '필기 지우기 실행' AND elementType == \(btnType)")
+        guard run.waitForExistence(timeout: 30) else { record("rv-3-exam", false, "photo not loaded"); return }
+        beat(2); reveal(run); beat(); mark("11-crop-step")
+        tapCenter(run)
+        let done = any(app, "label CONTAINS '처리 완료'")
+        let doneOk = done.waitForExistence(timeout: 240)
+        beat(1.5)
+        let canvas = any(app, "label == '필기 지운 결과'")
+        if canvas.exists { reveal(canvas) }
+        beat(2.5); mark("12-result")
+        record("rv-3-exam-processed", doneOk, doneOk ? done.label : "")
+        guard doneOk else { return }
+        let save = app.buttons["저장"]
+        if save.waitForExistence(timeout: 5) { reveal(save); beat(); tapCenter(save) }
+        _ = waitAny([app.buttons["Save"], app.buttons["Move"], app.buttons["Browse"]], timeout: 90)
+        beat(1.5)
+        if let local = waitAny([any(app, "label == 'On My iPhone'")], timeout: 20), local.isHittable { local.tap(); beat(1.5) }
+        mark("13-files-sheet")
+        if let c = waitAny([app.buttons["Save"], app.buttons["Move"]], timeout: 30), c.isEnabled { c.tap() }
+        let saved = any(app, "label CONTAINS '저장을 완료'")
+        let savedOk = saved.waitForExistence(timeout: 30)
+        if savedOk { reveal(saved) }
+        beat(2); mark("14-saved")
+        record("rv-3-save-files", savedOk, savedOk && saved.exists ? saved.label : "")
+        let share = app.buttons["공유"]
+        if share.waitForExistence(timeout: 5) { reveal(share); beat(); tapCenter(share) }
+        let sheet = waitAny([app.otherElements["ActivityListView"], app.buttons["Close"], app.cells["Save to Files"]], timeout: 20)
+        beat(3); mark("15-share-sheet")
+        record("rv-3-share-sheet", sheet != nil)
+        if app.buttons["Close"].exists && app.buttons["Close"].isHittable { app.buttons["Close"].tap() }
+        else { app.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.12)).tap() }
+        beat(2)
+
+        // 4. back home -> PDF 분할 tool screen
+        let back = any(app, "label == '← 모든 도구' AND elementType == \(btnType)")
+        if back.exists { reveal(back); beat(); tapCenter(back); beat(2) }
+        let split = app.buttons["PDF 분할 도구 열기"]
+        if !split.waitForExistence(timeout: 6) {
+            let side = any(app, "label == '모든 도구' AND elementType == \(btnType)")
+            if side.exists { side.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.5)).tap(); beat(2) }
+        }
+        var splitOk = false
+        if split.waitForExistence(timeout: 10) {
+            reveal(split); beat(1.5); tapCenter(split)
+            splitOk = any(app, "label CONTAINS '파일 선택' AND elementType == \(btnType)").waitForExistence(timeout: 10)
+            beat(3); mark("16-split-tool")
+        }
+        record("rv-4-split-tool", splitOk)
+
+        // 5. account chip -> 계정 삭제 -> OK -> gate "계정을 삭제했습니다"
+        reveal(chip); beat(); tapCenter(chip)
+        let del = any(app, "label == '계정 삭제' AND elementType == \(btnType)")
+        guard del.waitForExistence(timeout: 8) else { record("rv-5-delete", false, "account menu missing"); return }
+        beat(2); mark("17-account-menu")
+        del.tap()
+        let confirmAlert = app.alerts.firstMatch
+        var confirmed = false
+        if confirmAlert.waitForExistence(timeout: 10) {
+            beat(2); mark("18-delete-confirm")
+            let ok = [confirmAlert.buttons["OK"], confirmAlert.buttons["확인"]].first(where: { $0.exists }) ?? confirmAlert.buttons.element(boundBy: confirmAlert.buttons.count - 1)
+            ok.tap(); confirmed = true
+        }
+        let gone = any(app, "label CONTAINS '계정을 삭제했습니다'")
+        let goneOk = gone.waitForExistence(timeout: 30)
+        beat(3); mark("19-deleted-gate")
+        record("rv-5-delete", confirmed && goneOk && loginButton(app).exists, "confirmDialog=\(confirmed) deletedMessage=\(goneOk)")
+        beat(2)
+    }
 }
