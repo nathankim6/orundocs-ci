@@ -1,0 +1,27 @@
+name: InkUNet export and evaluation
+on: workflow_dispatch
+permissions: { contents: read }
+jobs:
+  eval:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 40
+    defaults: { run: { working-directory: inkunet-ci } }
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+        with: { persist-credentials: false }
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020
+        with: { node-version: '22' }
+      - name: Stage pages with current engine
+        run: |
+          npm i --no-save --no-audit --no-fund pngjs@7.0.0 jpeg-js@0.4.4
+          node stage.mjs
+      - name: Python deps
+        run: |
+          python3 -m pip install --quiet torch --index-url https://download.pytorch.org/whl/cpu
+          python3 -m pip install --quiet onnx onnxruntime pillow numpy pyyaml huggingface_hub
+      - name: Download InkUNet
+        run: python3 -c "from huggingface_hub import snapshot_download;snapshot_download('felixwang1024/InkUNet-erase-gated',local_dir='hf')"
+      - name: Export ONNX and evaluate
+        run: python3 export_eval.py
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with: { name: inkunet-out, path: inkunet-ci/out, retention-days: 3 }
