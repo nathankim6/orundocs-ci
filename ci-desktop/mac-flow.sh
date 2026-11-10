@@ -3,7 +3,7 @@
 # Usage: mac-flow.sh <zip> <evidence-dir> <dmg-out-dir>
 set -u
 ZIP="$1"; OUT="$2"; DMGDIR="$3"
-EXPECT=149ef066888c88328e4aad994f5a142c1261a5cb4b8add4042acf6afcc90922f
+EXPECT=94223a5f6a81ccf53559e6f4d3ffd9e7451a537b7b4b38a79f7a96d623053887
 HERE="$(cd "$(dirname "$0")" && pwd)"
 mkdir -p "$OUT/shots" "$DMGDIR"
 LOG="$OUT/mac-flow-log.txt"; : > "$LOG"
