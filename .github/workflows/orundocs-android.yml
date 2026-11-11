@@ -20,7 +20,7 @@ concurrency:
   cancel-in-progress: false
 
 env:
-  SOURCE_SHA256: 23be3c5e0f76c353b071b1c40ecf588e4682242c9375e923fdbe775402b71579
+  SOURCE_SHA256: 5535299cbd305dbb414f5cbedf9f6ba7328e1823d6719c1f7e70b97eddaa2050
 
 defaults:
   run:
@@ -87,7 +87,7 @@ jobs:
           grep -q 'exceljs@4.4.0' ci-output/build/open-source-notices.txt
           grep -q 'Permission is hereby granted' ci-output/build/open-source-notices.txt
           "$ANDROID_HOME/build-tools/36.0.0/aapt2" dump badging ci-output/build/app-release-unsigned.apk > ci-output/build/release-badging.txt
-          grep -q "package: name='com.orundocs.app'.*versionCode='4000003'.*versionName='4.0.0'" ci-output/build/release-badging.txt
+          grep -q "package: name='com.orundocs.app'.*versionCode='4000004'.*versionName='4.0.0'" ci-output/build/release-badging.txt
           if grep -q '^application-debuggable' ci-output/build/release-badging.txt; then echo 'Release is debuggable'; exit 1; fi
           sha256sum ci-output/build/*.apk > ci-output/build/SHA256SUMS
           test "$(du -sm ci-output/build | cut -f1)" -lt 80
@@ -135,7 +135,7 @@ jobs:
           "$ANDROID_HOME/build-tools/36.0.0/apksigner" verify --verbose --print-certs app-release-androidTest.apk > test-signature.txt
           diff <(grep 'certificate SHA-256 digest:' app-signature.txt) <(grep 'certificate SHA-256 digest:' test-signature.txt)
           "$ANDROID_HOME/build-tools/36.0.0/aapt2" dump badging app-release.apk > release-badging.txt
-          grep -q "package: name='com.orundocs.app'.*versionCode='4000003'.*versionName='4.0.0'" release-badging.txt
+          grep -q "package: name='com.orundocs.app'.*versionCode='4000004'.*versionName='4.0.0'" release-badging.txt
           if grep -q '^application-debuggable' release-badging.txt; then echo 'Release is debuggable'; exit 1; fi
       - name: Start clean standard Android emulator
         shell: bash
