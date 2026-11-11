@@ -1,10 +1,10 @@
 {
   "app": "OrunDocs",
   "version": "4.0.0",
-  "versionCode": 4000003,
+  "versionCode": 4000004,
   "package": "com.orundocs.app",
-  "sourceSha256": "23be3c5e0f76c353b071b1c40ecf588e4682242c9375e923fdbe775402b71579",
-  "sourceBytes": 9600913,
+  "sourceSha256": "5535299cbd305dbb414f5cbedf9f6ba7328e1823d6719c1f7e70b97eddaa2050",
+  "sourceBytes": 9600989,
   "files": [
     {
       "path": "LICENSE",
@@ -34,7 +34,7 @@
     {
       "path": "android/app/build.gradle",
       "bytes": 2380,
-      "sha256": "54eeaf76e12cd7d1c18912955c7deef05e261b62eade2880effa195e94ed2f56"
+      "sha256": "b034944ca5b644b4fd952238853c206bd9509c43b125f288b91cdf2dcd19d2f4"
     },
     {
       "path": "android/app/capacitor.build.gradle",
@@ -228,8 +228,8 @@
     },
     {
       "path": "android/app/src/main/res/values/strings.xml",
-      "bytes": 288,
-      "sha256": "e138046662ccac94097b8e2dee4aa5e794b2f4019f37942b1f4e12e4badbf9bd"
+      "bytes": 290,
+      "sha256": "02b12f3836b9d749aba4bca3d6d455d7caa337b8a48d0550602576060abc5330"
     },
     {
       "path": "android/app/src/main/res/values/styles.xml",
@@ -328,8 +328,8 @@
     },
     {
       "path": "capacitor.config.json",
-      "bytes": 381,
-      "sha256": "e3646332a63736e72cbdbec6bfdd446e0b60cab9600a463c745c885cc7c68c08"
+      "bytes": 382,
+      "sha256": "1aaf4b9fcbedbd5145344cc849a82a289270bf5b90afd365154efe485eabd914"
     },
     {
       "path": "ci/README-native-tests.md",
@@ -433,8 +433,8 @@
     },
     {
       "path": "public/index.html",
-      "bytes": 6508,
-      "sha256": "e99a6614eb38470aa6fc3ba6aaeb116b73d257da71029dec4cf1074b5481def6"
+      "bytes": 6513,
+      "sha256": "43614527fede417169a7fe83f4cd0f0afd55918ed0ac392a3010be0b3eff6536"
     },
     {
       "path": "public/open-source-notices.txt",
@@ -1533,8 +1533,8 @@
     },
     {
       "path": "src/auth/auth-gate.js",
-      "bytes": 9992,
-      "sha256": "a29855c01053b8638cad5f122ed1bb4424b4cb0e22f51145f42c6255b72008d4"
+      "bytes": 9996,
+      "sha256": "5228bf8717f8042cac539238b8a957886a6dbf9764f514f2f89b427c6ab551a2"
     },
     {
       "path": "src/auth/orundocs-auth-core.mjs",
@@ -1543,18 +1543,18 @@
     },
     {
       "path": "src/exam-scan-core.mjs",
-      "bytes": 28145,
-      "sha256": "7fd0cabe9e3b8b2ea6cea4fb03b404f536104f806b39fa6a7e1ab0793063a9f0"
+      "bytes": 28146,
+      "sha256": "87bd24b43943d6e25628d789be66e668bf0ec91683b23777e444aa99fcd45976"
     },
     {
       "path": "src/exam-scan-export.mjs",
-      "bytes": 6003,
-      "sha256": "fdcc4112d0af05423f3afeab181e50767049d57df0c520f1c5ab358093a00b71"
+      "bytes": 6007,
+      "sha256": "6649c2bbb9e73c0df32df2950eaa51414fff52c42bd5d4d8908b1913003695c9"
     },
     {
       "path": "src/exam-scan-ui.js",
-      "bytes": 27448,
-      "sha256": "94d4d724622cf39e7ef411108d889ce75c12bf83d57c437ec2bb97be638a9796"
+      "bytes": 27449,
+      "sha256": "55fb17d71f555b70400092e0b3db4d1ee646f0377f3d5279f66c44289708e0ac"
     },
     {
       "path": "src/exam-scan-worker.js",
@@ -1578,13 +1578,13 @@
     },
     {
       "path": "src/native/local-office-export.mjs",
-      "bytes": 9549,
-      "sha256": "efaa4464e151750a1129a0d5caef58b2c122fcec2415243dc578e4027f77952b"
+      "bytes": 9551,
+      "sha256": "267451344676b552c1116be46a05be3d6e1043511422552f76e80723f676d304"
     },
     {
       "path": "src/native/saf-save-adapter.mjs",
-      "bytes": 786,
-      "sha256": "ab9307ff5b0181d5d4b5be332516c69795d61af7f6064f60983be48ca13696c5"
+      "bytes": 787,
+      "sha256": "60bc4a62a41c5bc7fe660d1ef2284adf07590277a375295ce2fceadd6f0e6a1c"
     },
     {
       "path": "src/native/saf-save-core.mjs",
@@ -1603,8 +1603,8 @@
     },
     {
       "path": "src/native/share-bridge.mjs",
-      "bytes": 1503,
-      "sha256": "2a839bf9a69eefb34904438fe1d50522755351abf51494c4c28166ed743e1622"
+      "bytes": 1504,
+      "sha256": "69ac4e4374547d5802d29d5b316faafd302583cca4edf68228b454f4d383c3bf"
     },
     {
       "path": "src/pdf-ai-ops.js",
@@ -1653,8 +1653,8 @@
     },
     {
       "path": "src/toolkit.js",
-      "bytes": 36765,
-      "sha256": "534f7f5419b7cfed3b2ae6aca20320493bf6ec903461841ef9da1db344394eea"
+      "bytes": 36768,
+      "sha256": "b53f7fdfde9ce49e13c9e716fab201af58bbf60b5237a4c24c4c9ad9667a1e09"
     }
   ]
 }
