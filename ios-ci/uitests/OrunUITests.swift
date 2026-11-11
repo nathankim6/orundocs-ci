@@ -448,6 +448,7 @@ final class OrunUITests: XCTestCase {
             if cell.exists || f.exists {
                 let other = app.cells.matching(NSPredicate(format: "label CONTAINS 'exam-photo'")).firstMatch
                 let pickerOpen = { app.cells.matching(NSPredicate(format: "label CONTAINS 'preview-six-pages'")).firstMatch.exists }
+                Thread.sleep(forTimeInterval: 4) // let the file provider finish indexing the fixture
                 let tries: [(String, () -> Void)] = [
                     ("tap", { cell.tap() }),
                     ("tap-again", { Thread.sleep(forTimeInterval: 2); if cell.exists { cell.tap() } }),
