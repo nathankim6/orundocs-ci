@@ -3,7 +3,7 @@
 # Usage: mac-flow.sh <zip> <evidence-dir> <dmg-out-dir>
 set -u
 ZIP="$1"; OUT="$2"; DMGDIR="$3"
-EXPECT=94223a5f6a81ccf53559e6f4d3ffd9e7451a537b7b4b38a79f7a96d623053887
+EXPECT=4fa61518a5d12c0a3997b286d69c0dc3852837c6964aefd9fb57add2b28a992d
 HERE="$(cd "$(dirname "$0")" && pwd)"
 mkdir -p "$OUT/shots" "$DMGDIR"
 LOG="$OUT/mac-flow-log.txt"; : > "$LOG"
@@ -17,7 +17,7 @@ if [ "$SHA" = "$EXPECT" ]; then step 0-sha256 passed "$SHA"; else step 0-sha256 
 
 W="$RUNNER_TEMP/macwork"; rm -rf "$W"; mkdir -p "$W/unz"
 run ditto -x -k "$ZIP" "$W/unz" || { step 1-ditto failed "ditto -x -k failed"; exit 1; }
-APP="$W/unz/OrunDocs.app"
+APP="$(find "$W/unz" -maxdepth 1 -name '*.app' | head -1)"; APPNAME="$(basename "$APP")"; echo "bundle: $APPNAME" | tee -a "$LOG"; [ "$(printf %s "$APPNAME" | iconv -f UTF-8-MAC -t UTF-8)" = "옳은PDF.app" ] && step 1b-bundle-name passed "$APPNAME" || step 1b-bundle-name failed "$APPNAME"
 [ -d "$APP" ] && step 1-ditto passed "extracted $(du -sh "$APP" | cut -f1)" || { step 1-ditto failed "no app"; exit 1; }
 ls -la "$APP/Contents/MacOS" >> "$LOG"
 /usr/libexec/PlistBuddy -c 'Print' "$APP/Contents/Info.plist" > "$OUT/bundle-version.txt" 2>&1
@@ -32,41 +32,41 @@ codesign -dvv "$APP" > "$OUT/codesign-display.txt" 2>&1
 [ $rc -eq 0 ] && step 2c-codesign passed "$(grep -E 'Authority=Developer ID Application|TeamIdentifier' "$OUT/codesign-display.txt" | tr '\n' ' ')" || step 2c-codesign failed "rc=$rc $(tail -3 "$OUT/codesign-verify.txt" | tr '\n' ' ')"
 
 # Install like a user: copy into /Applications
-sudo rm -rf "/Applications/OrunDocs.app"
-run ditto "$APP" "/Applications/OrunDocs.app" || run sudo ditto "$APP" "/Applications/OrunDocs.app"
-spctl -a -vvv -t exec "/Applications/OrunDocs.app" > "$OUT/spctl-applications.txt" 2>&1; rc=$?
+sudo rm -rf "/Applications/$APPNAME"
+run ditto "$APP" "/Applications/$APPNAME" || run sudo ditto "$APP" "/Applications/$APPNAME"
+spctl -a -vvv -t exec "/Applications/$APPNAME" > "$OUT/spctl-applications.txt" 2>&1; rc=$?
 [ $rc -eq 0 ] && step 3-install-applications passed "copied; /Applications copy assessed: $(tr '\n' ' ' < "$OUT/spctl-applications.txt")" || step 3-install-applications failed "rc=$rc $(tr '\n' ' ' < "$OUT/spctl-applications.txt")"
 # Launch through LaunchServices (as Finder/Dock would), observe, then quit
-open -a "/Applications/OrunDocs.app" >> "$LOG" 2>&1; olrc=$?
+open -a "/Applications/$APPNAME" >> "$LOG" 2>&1; olrc=$?
 sleep 12
-pgrep -fl "OrunDocs.app/Contents/MacOS/OrunDocs" > "$OUT/open-launch-ps.txt" 2>&1
+pgrep -fl "Contents/MacOS/OrunDocs" > "$OUT/open-launch-ps.txt" 2>&1
 screencapture -x "$OUT/shots/m00-open-launch.png" >/dev/null 2>&1 || true
 if [ -s "$OUT/open-launch-ps.txt" ]; then step 3b-launchservices-open passed "open -a rc=$olrc; running: $(head -1 "$OUT/open-launch-ps.txt")"; else step 3b-launchservices-open failed "open -a rc=$olrc; app process not found after 12s"; fi
-osascript -e 'tell application "OrunDocs" to quit' >> "$LOG" 2>&1 || true
-sleep 5; pkill -f "OrunDocs.app/Contents/MacOS/OrunDocs" 2>/dev/null; sleep 2
+osascript -e 'tell application id "com.orundocs.desktop" to quit' >> "$LOG" 2>&1 || true
+sleep 5; pkill -f "Contents/MacOS/OrunDocs" 2>/dev/null; sleep 2
 
 # E2E against /Applications copy
-( cd "$HERE" && node mac-e2e.cjs "/Applications/OrunDocs.app" "$OUT" ) 2>&1 | tee "$OUT/mac-e2e-console.txt"
+( cd "$HERE" && node mac-e2e.cjs "/Applications/$APPNAME" "$OUT" ) 2>&1 | tee "$OUT/mac-e2e-console.txt"
 # Never keep GitHub ::add-mask:: lines (they carry the secret itself) in uploaded evidence files.
 sed -i '' '/::add-mask::/d' "$OUT/mac-e2e-console.txt"
 grep -q "MAC E2E OVERALL passed" "$OUT/mac-e2e-console.txt" && step 4-e2e passed "see e2e-result.json" || step 4-e2e "$(grep -o 'MAC E2E OVERALL [a-z]*' "$OUT/mac-e2e-console.txt" | awk '{print $4}')" "see e2e-result.json"
-pkill -f "OrunDocs.app/Contents/MacOS/OrunDocs" 2>/dev/null
+pkill -f "Contents/MacOS/OrunDocs" 2>/dev/null
 
 # Unsigned DMG of the notarized app (app inside keeps its signature + stapled ticket)
 D="$W/dmgsrc"; rm -rf "$D"; mkdir -p "$D"
-ditto "$APP" "$D/OrunDocs.app"
+ditto "$APP" "$D/$APPNAME"
 ln -s /Applications "$D/Applications"
-DMG="$DMGDIR/OrunDocs-4.0.0-mac-arm64.dmg"
-run hdiutil create -volname "OrunDocs" -srcfolder "$D" -ov -format UDZO "$DMG"; rc=$?
+DMG="$DMGDIR/OrunPDF-4.0.0-mac-arm64.dmg"
+run hdiutil create -volname "옳은PDF" -srcfolder "$D" -ov -format UDZO "$DMG"; rc=$?
 [ $rc -eq 0 ] && step 5a-dmg-create passed "$(shasum -a 256 "$DMG" | awk '{print $1}') $(stat -f %z "$DMG") bytes" || step 5a-dmg-create failed "rc=$rc"
-shasum -a 256 "$DMG" | tee "$DMGDIR/OrunDocs-4.0.0-mac-arm64.dmg.sha256" > "$OUT/dmg.sha256"
+shasum -a 256 "$DMG" | tee "$DMGDIR/OrunPDF-4.0.0-mac-arm64.dmg.sha256" > "$OUT/dmg.sha256"
 run hdiutil imageinfo "$DMG"
 MNT="$W/mnt"; mkdir -p "$MNT"
 run hdiutil attach -nobrowse -readonly -mountpoint "$MNT" "$DMG"; rc=$?
 if [ $rc -eq 0 ]; then
   ls -la "$MNT" > "$OUT/dmg-root-listing.txt" 2>&1
   readlink "$MNT/Applications" >> "$OUT/dmg-root-listing.txt"
-  python3 - "$APP" "$MNT/OrunDocs.app" > "$OUT/dmg-tree-compare.txt" 2>&1 <<'PY'
+  python3 - "$APP" "$MNT/$APPNAME" > "$OUT/dmg-tree-compare.txt" 2>&1 <<'PY'
 import hashlib, os, stat, sys
 def manifest(root):
     rows = {}
@@ -88,9 +88,9 @@ for k in diff[:50]: print('DIFF', k, a.get(k), b.get(k))
 print('IDENTICAL' if not diff else 'DIFFERENT')
 PY
   grep -q '^IDENTICAL' "$OUT/dmg-tree-compare.txt" && step 5b-dmg-identical passed "$(head -1 "$OUT/dmg-tree-compare.txt")" || step 5b-dmg-identical failed "$(head -3 "$OUT/dmg-tree-compare.txt" | tr '\n' ' ')"
-  codesign --verify --deep --strict --verbose=2 "$MNT/OrunDocs.app" > "$OUT/dmg-codesign.txt" 2>&1; c1=$?
-  spctl -a -vvv -t exec "$MNT/OrunDocs.app" > "$OUT/dmg-spctl.txt" 2>&1; c2=$?
-  xcrun stapler validate "$MNT/OrunDocs.app" > "$OUT/dmg-stapler.txt" 2>&1; c3=$?
+  codesign --verify --deep --strict --verbose=2 "$MNT/$APPNAME" > "$OUT/dmg-codesign.txt" 2>&1; c1=$?
+  spctl -a -vvv -t exec "$MNT/$APPNAME" > "$OUT/dmg-spctl.txt" 2>&1; c2=$?
+  xcrun stapler validate "$MNT/$APPNAME" > "$OUT/dmg-stapler.txt" 2>&1; c3=$?
   [ $c1 -eq 0 ] && [ $c2 -eq 0 ] && [ $c3 -eq 0 ] && step 5c-dmg-app-verify passed "codesign ok; $(tr '\n' ' ' < "$OUT/dmg-spctl.txt"); stapler ok" || step 5c-dmg-app-verify failed "codesign=$c1 spctl=$c2 stapler=$c3"
   spctl -a -vvv -t open --context context:primary-signature "$DMG" > "$OUT/dmg-container-spctl.txt" 2>&1; echo "dmg container assessment rc=$? (expected rejected: DMG is unsigned)" >> "$OUT/dmg-container-spctl.txt"
   run hdiutil detach "$MNT"

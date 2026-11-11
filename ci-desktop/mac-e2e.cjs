@@ -20,7 +20,7 @@ function screencap(file) { const r = spawnSync('screencapture', ['-x', file], { 
 const SAVE_SCRIPT = `
 on run argv
   tell application "System Events"
-    tell process "OrunDocs"
+    tell (first process whose bundle identifier is "com.orundocs.desktop")
       set frontmost to true
       set found to false
       repeat 80 times
@@ -75,7 +75,7 @@ end run`;
   console.log('accessibility probe', JSON.stringify(probe));
   const downloads = path.join(os.homedir(), 'Downloads');
   fs.mkdirSync(downloads, { recursive: true });
-  const r = await runE2E({ label: 'macos-applications', exe, expectVersion: '4.0.0', productName: 'OrunDocs', out: outDir, fixtures: path.join(__dirname, 'fixtures'), port: 9333, saveMode: meta.saveMode,
+  const r = await runE2E({ label: 'macos-applications', exe, expectVersion: '4.0.0', productName: '옳은PDF', expectBrand: '옳은PDF', out: outDir, fixtures: path.join(__dirname, 'fixtures'), port: 9333, saveMode: meta.saveMode,
     saveHandler: async ({ name, shotPath }) => {
       const savedPath = path.join(downloads, name);
       try { fs.rmSync(savedPath, { force: true }); } catch {}

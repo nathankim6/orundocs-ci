@@ -176,6 +176,19 @@ async function runE2E(o) {
   try {
     await acquireToken();
     await startApp('first launch');
+    const STOP = { stop: true };
+
+    // ---- Check U0 (upgrade runs): the session stored by the PREVIOUS build unlocks the new build by itself
+    if (o.expectAutoUnlockFirst) {
+      try {
+        const r = await waitUnlocked(90000);
+        const s = await shot('00u-upgraded-auto-unlocked.png');
+        setCheck('U0-session-survived-upgrade', r.unlocked && r.accountHasAt && r.matchesExpectedAccount !== false ? 'passed' : 'failed', JSON.stringify(r), [s]);
+      } catch (e) { setCheck('U0-session-survived-upgrade', 'failed', 'error: ' + e.message, [await shot('00u-error.png')]); }
+      // sign out through the app's own store so the gate and the real login can be exercised again
+      L('auth.clear', await ev(async () => { try { await window.pdfDesktop.auth.clear(); return 'cleared'; } catch (e) { return 'error ' + e.message; } }));
+      await page.reload({ waitUntil: 'domcontentloaded' });
+    }
 
     // ---- Check G1: sign-in gate shown, workspace hidden
     try {
@@ -184,10 +197,10 @@ async function runE2E(o) {
       const g = await ev(() => { const gate = document.getElementById('od-gate'), btn = document.querySelector('#od-gate .od-google'), sb = document.querySelector('.app-sidebar'), main = document.getElementById('app-main');
         return { locked: document.documentElement.classList.contains('od-locked'), gateHidden: gate ? gate.hidden : null, gateVisible: gate ? getComputedStyle(gate).display !== 'none' && gate.getBoundingClientRect().width > 0 : false,
           msg: document.querySelector('#od-gate .od-msg')?.textContent || '', button: btn ? btn.textContent : null, buttonVisible: btn ? !btn.hidden && btn.getBoundingClientRect().width > 0 : false,
-          cardText: (document.querySelector('#od-gate .od-card')?.textContent || '').replace(/\s+/g, ' ').trim(), subtitleRemoved: !(document.querySelector('#od-gate .od-card')?.textContent || '').includes('문서 작업 공간'), sidebarVisibility: sb ? getComputedStyle(sb).visibility : null, mainVisibility: main ? getComputedStyle(main).visibility : null, accountHidden: document.getElementById('od-account')?.hidden }; });
+          cardText: (document.querySelector('#od-gate .od-card')?.textContent || '').replace(/\s+/g, ' ').trim(), subtitleRemoved: !(document.querySelector('#od-gate .od-card')?.textContent || '').includes('문서 작업 공간'), sidebarVisibility: sb ? getComputedStyle(sb).visibility : null, mainVisibility: main ? getComputedStyle(main).visibility : null, h1: document.querySelector('#od-gate h1')?.textContent || '', gateInnerText: gate ? gate.innerText.replace(/\s+/g, ' ').trim() : '', title: document.title, accountHidden: document.getElementById('od-account')?.hidden }; });
       R.gate = g;
       const s = await shot('00a-signin-gate.png');
-      const ok = g.locked && g.gateHidden === false && g.gateVisible && /로그인 \(Google · Apple\)/.test(g.button || '') && g.buttonVisible && /로그인해 주세요/.test(g.msg) && g.sidebarVisibility === 'hidden' && g.subtitleRemoved;
+      const ok = g.locked && g.gateHidden === false && g.gateVisible && /로그인 \(Google · Apple\)/.test(g.button || '') && g.buttonVisible && /로그인해 주세요/.test(g.msg) && g.sidebarVisibility === 'hidden' && g.subtitleRemoved && (!o.expectBrand || (g.h1.trim() === o.expectBrand && g.gateInnerText.includes(o.expectBrand) && !g.gateInnerText.includes('OrunDocs') && g.title.includes(o.expectBrand) && !g.title.includes('OrunDocs')));
       setCheck('G1-signin-gate-shown-workspace-hidden', ok ? 'passed' : 'failed', JSON.stringify(g), [s]);
     } catch (e) { setCheck('G1-signin-gate-shown-workspace-hidden', 'failed', 'error: ' + e.message, [await shot('00a-gate-error.png')]); }
 
@@ -205,6 +218,7 @@ async function runE2E(o) {
     } else {
       setCheck('G2-real-account-unlock', 'not-verified', 'no refresh token (' + tokenSource + '): gate hidden by harness, login path NOT verified');
     }
+    if (o.unlockOnly) throw STOP;
     if (await ev(() => document.documentElement.classList.contains('od-locked'))) {
       L('gate still locked; hiding it so tool checks can run (login NOT counted as verified)');
       R.gateBypassedForToolChecks = true;
@@ -234,6 +248,16 @@ async function runE2E(o) {
       const ok = new RegExp((o.expectVersion || '3.5.0').replace(/\./g, '\\.')).test(info.footer || '') && info.cards === 32 && /32/.test(info.total || '');
       setCheck('1-window-footer-catalog', ok ? 'passed' : 'failed', `footer="${(info.footer || '').trim()}", tool-total="${info.total}", cards=${info.cards}, catalog-count="${info.catalogCount}", Electron=${electron}, desktopInfo=${JSON.stringify(info.desktop)}, health.version=${info.health && info.health.version}`, [s]);
     } catch (e) { setCheck('1-window-footer-catalog', 'failed', 'error: ' + e.message, [await shot('01-home-error.png')]); }
+
+    // ---- Check B1: product name shown on home (visible text, title, footer, sidebar brand)
+    if (o.expectBrand) {
+      try {
+        const b = await ev(brand => { const vis = document.body.innerText; return { title: document.title, footer: (document.querySelector('.app-statusbar')?.innerText || '').replace(/\s+/g, ' '), sidebarBrand: (document.querySelector('.app-sidebar .brand')?.innerText || '').replace(/\s+/g, ' '), visibleHasBrand: vis.includes(brand), visibleHasOrunDocs: vis.includes('OrunDocs'), orunDocsContexts: (vis.match(/.{0,30}OrunDocs.{0,30}/g) || []).slice(0, 5) }; }, o.expectBrand);
+        const ok = b.visibleHasBrand && !b.visibleHasOrunDocs && b.title.includes(o.expectBrand) && !b.title.includes('OrunDocs') && b.footer.includes(o.expectBrand) && b.sidebarBrand.includes(o.expectBrand);
+        R.branding = b;
+        setCheck('B1-home-branding', ok ? 'passed' : 'failed', JSON.stringify(b), ['shots/01-home.png']);
+      } catch (e) { setCheck('B1-home-branding', 'failed', 'error: ' + e.message); }
+    }
 
     // ---- Check 2: exam scan (handwriting removal) + save as PDF
     try {
@@ -316,11 +340,11 @@ async function runE2E(o) {
       setCheck('5-no-renderer-crash', ok ? 'passed' : 'failed', `crash events=${R.events.crash}; page responsive=${alive === 2}; app process alive=${child.exitCode === null}; pageErrors=${R.events.pageErrors.length}; consoleErrors=${R.events.consoleErrors.length}`, [s]);
     } catch (e) { setCheck('5-no-renderer-crash', 'failed', 'error: ' + e.message); }
   } catch (e) {
-    R.fatal = String(e.stack || e); L('FATAL', R.fatal);
+    if (!(e && e.stop)) { R.fatal = String(e.stack || e); L('FATAL', R.fatal); }
   }
   try {
     // ---- Check G3: restart persistence (stored session unlocks by itself)
-    if (TOKEN && R.checks['G2-real-account-unlock']?.status === 'passed') {
+    if (o.unlockOnly) { /* sign-in only launch */ } else if (TOKEN && R.checks['G2-real-account-unlock']?.status === 'passed') {
       try {
         R.gracefulExit = await stopApp();
         await wait(3000);
@@ -330,7 +354,7 @@ async function runE2E(o) {
         const s = await shot('06-relaunch-auto-unlocked.png');
         setCheck('G3-restart-persistence', r.unlocked && r.accountHasAt && r.matchesExpectedAccount !== false ? 'passed' : 'failed', JSON.stringify(r), [s]);
       } catch (e) { setCheck('G3-restart-persistence', 'failed', 'error: ' + e.message, [await shot('06-relaunch-error.png')]); }
-    } else setCheck('G3-restart-persistence', 'not-verified', 'skipped because G2 did not pass / no token');
+    } else if (!o.unlockOnly) setCheck('G3-restart-persistence', 'not-verified', 'skipped because G2 did not pass / no token');
   } catch (e) {
     R.fatal2 = String(e.stack || e); L('FATAL(late)', R.fatal2);
   } finally {

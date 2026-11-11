@@ -7,8 +7,10 @@ const crypto = require('node:crypto');
 const { spawn, spawnSync } = require('node:child_process');
 const { runE2E } = require('./e2e.cjs');
 
-const [setupExe, outDir] = process.argv.slice(2);
-const EXPECT = '649b7fcb72741c7301b6e3478e2c70c819ed98a3c4e09da94d85fbcf8eaf9f36';
+const [setupExe, outDir, oldSetupExe] = process.argv.slice(2);
+const EXPECT = '4df27f3f01d7a5c5034f138997d9feab03c502a55c39573e56ad7b4f2f85fc6a';
+const EXPECT_OLD = '649b7fcb72741c7301b6e3478e2c70c819ed98a3c4e09da94d85fbcf8eaf9f36';
+const BRAND = '옳은PDF';
 const shots = path.join(outDir, 'shots');
 fs.mkdirSync(shots, { recursive: true });
 const S = { platform: 'windows', setupExe, steps: {}, startedAt: new Date().toISOString() };
@@ -36,9 +38,12 @@ const INTEGRATION = `
 $k='HKCU:\\Software\\Microsoft\\Windows\\CurrentVersion\\Uninstall\\OrunDocs'
 $reg=$null; if(Test-Path $k){ $reg=Get-ItemProperty $k | Select-Object DisplayName,DisplayVersion,Publisher,InstallLocation,UninstallString,DisplayIcon,EstimatedSize,NoModify,NoRepair,InstallDate }
 $desk=[Environment]::GetFolderPath('Desktop'); $start=Join-Path $env:APPDATA 'Microsoft\\Windows\\Start Menu\\Programs\\OrunDocs'
-$sa=New-Object -ComObject Shell.Application; $lnks=@()
-foreach($f in @((Join-Path $desk 'OrunDocs.lnk'),(Join-Path $start 'OrunDocs.lnk'),(Join-Path $start 'OrunDocs 제거.lnk'))){ if(Test-Path -LiteralPath $f){ $t='';$a='';$wd=''; try{ $l=$sa.Namespace([IO.Path]::GetDirectoryName($f)).ParseName([IO.Path]::GetFileName($f)).GetLink; $t=$l.Path; $a=$l.Arguments; $wd=$l.WorkingDirectory }catch{ $t='read-error: '+$_.Exception.Message }; $lnks+=@{path=$f;exists=$true;target=$t;args=$a;workdir=$wd} } else { $lnks+=@{path=$f;exists=$false} } }
-@{registry=$reg;shortcuts=$lnks;startMenuDirExists=(Test-Path -LiteralPath $start);desktopDir=$desk} | ConvertTo-Json -Depth 5 -Compress`;
+$sa=New-Object -ComObject Shell.Application
+function Lnk($f){ if(Test-Path -LiteralPath $f){ $t='';$a='';$wd=''; try{ $l=$sa.Namespace([IO.Path]::GetDirectoryName($f)).ParseName([IO.Path]::GetFileName($f)).GetLink; $t=$l.Path; $a=$l.Arguments; $wd=$l.WorkingDirectory }catch{ $t='read-error: '+$_.Exception.Message }; return @{path=$f;exists=$true;target=$t;args=$a;workdir=$wd} } else { return @{path=$f;exists=$false} } }
+$lnks=@((Lnk (Join-Path $desk '옳은PDF.lnk')),(Lnk (Join-Path $start '옳은PDF.lnk')),(Lnk (Join-Path $start '옳은PDF 제거.lnk')))
+$legacy=@((Lnk (Join-Path $desk 'OrunDocs.lnk')),(Lnk (Join-Path $start 'OrunDocs.lnk')),(Lnk (Join-Path $start 'OrunDocs 제거.lnk')))
+$all=@(); foreach($d in @($desk,$start)){ if(Test-Path -LiteralPath $d){ $all+=@(Get-ChildItem -LiteralPath $d -Filter *.lnk | Where-Object { $_.Name -match 'OrunDocs|옳은PDF' } | ForEach-Object { $_.FullName }) } }
+@{registry=$reg;shortcuts=$lnks;legacyShortcuts=$legacy;allAppLnks=$all;startMenuDirExists=(Test-Path -LiteralPath $start);desktopDir=$desk} | ConvertTo-Json -Depth 5 -Compress`;
 function countFiles(dir) { let n = 0; const walk = d => { for (const e of fs.readdirSync(d, { withFileTypes: true })) { if (e.isDirectory()) walk(path.join(d, e.name)); else n++; } }; walk(dir); return n; }
 function waitExit(proc, ms) { return new Promise(r => { if (proc.exitCode !== null) return r(proc.exitCode); const t = setTimeout(() => r('timeout'), ms); proc.once('exit', c => { clearTimeout(t); r(c); }); }); }
 
@@ -64,9 +69,9 @@ async function diagnoseCleanup(target) {
 
 function listAll(dir) { const out = []; const walk = (d, rel) => { for (const e of fs.readdirSync(d, { withFileTypes: true })) { const r = rel ? rel + '/' + e.name : e.name; out.push(r + (e.isDirectory() ? '/' : '')); if (e.isDirectory()) walk(path.join(d, e.name), r); } }; try { walk(dir, ''); } catch (e) { out.push('error: ' + e.message); } return out; }
 let TARGET, EXE;
-async function doInstall(n, sp) {
-  const t0 = Date.now();
-  const setup = spawn(setupExe, [], { stdio: 'ignore', cwd: path.dirname(setupExe) });
+async function doInstall(n, sp, opt = {}) {
+  const t0 = Date.now(); const sx = opt.setup || setupExe; const legacy = !!opt.legacy;
+  const setup = spawn(sx, [], { stdio: 'ignore', cwd: path.dirname(sx) });
   setup.on('exit', c => L('setup exe exited', c));
   const c1 = await ui('click', { processNames: ['OrunDocs'], textRegex: '이 계정에 설치할까요', buttonRegexes: ['^설치$'], keys: '{ENTER}', timeoutSec: 300, shotBefore: path.join(shots, sp + '1-install-confirm.png'), shotAfter: path.join(shots, sp + '2-installing.png'), shotOnTimeout: path.join(shots, sp + '1-timeout.png'), progressShot: path.join(shots, sp + '0-sfx-extracting.png'), progressShotAfterSec: 4 });
   step(n + 'a-installer-confirm-dialog', c1.ok ? 'passed' : 'failed', { seconds: Math.round((Date.now() - t0) / 1000), ...c1, log: undefined }, [c1.shotBefore, c1.shotAfter, c1.shot]);
@@ -78,8 +83,9 @@ async function doInstall(n, sp) {
   const se = await waitExit(setup, 180000);
   let info = null; try { info = JSON.parse(fs.readFileSync(path.join(TARGET, 'install-info.json'), 'utf8')); } catch {}
   const integ = ps(INTEGRATION); const files = fs.existsSync(TARGET) ? countFilesSafe(TARGET) : 0;
-  const ok = se === 0 && fs.existsSync(EXE) && info && info.version === '4.0.0' && info.files.length === files - 2 && integ.registry && integ.registry.DisplayVersion === '4.0.0' && Array.isArray(integ.shortcuts) && integ.shortcuts.every(x => x.exists);
-  step(n + 'c-setup-exit-and-installed', ok ? 'passed' : 'failed', { setupExit: se, seconds: Math.round((Date.now() - t0) / 1000), exe: fs.existsSync(EXE), filesOnDisk: files, installInfoFiles: info && info.files.length, registryVersion: integ.registry && integ.registry.DisplayVersion, shortcuts: integ.shortcuts });
+  const lnkSet = legacy ? integ.legacyShortcuts : integ.shortcuts, otherSet = legacy ? integ.shortcuts : integ.legacyShortcuts;
+  const ok = se === 0 && fs.existsSync(EXE) && info && info.version === '4.0.0' && info.files.length === files - 2 && integ.registry && integ.registry.DisplayVersion === '4.0.0' && integ.registry.DisplayName === (legacy ? 'OrunDocs' : BRAND) && Array.isArray(lnkSet) && lnkSet.every(x => x.exists && (x.target || '').toLowerCase() === EXE.toLowerCase()) && Array.isArray(otherSet) && otherSet.every(x => !x.exists);
+  step(n + 'c-setup-exit-and-installed', ok ? 'passed' : 'failed', { setupExit: se, seconds: Math.round((Date.now() - t0) / 1000), exe: fs.existsSync(EXE), filesOnDisk: files, installInfoFiles: info && info.files.length, registryVersion: integ.registry && integ.registry.DisplayVersion, registryDisplayName: integ.registry && integ.registry.DisplayName, legacyBuild: legacy, allAppLnks: integ.allAppLnks, legacyShortcuts: integ.legacyShortcuts, shortcuts: integ.shortcuts });
   return ok ? true : false;
 }
 async function doUninstall(n, sp, mode) {
@@ -87,7 +93,7 @@ async function doUninstall(n, sp, mode) {
   const integ = ps(INTEGRATION);
   const t1 = Date.now(); let un = null, how;
   if (mode === 'start-menu-shortcut') {
-    const lnk = integ.shortcuts.find(s => /제거\.lnk$/.test(s.path));
+    const lnk = integ.shortcuts.find(s => /옳은PDF 제거\.lnk$/.test(s.path));
     how = { mode, shortcut: lnk };
     const r = ps(`Start-Process -FilePath '${String(lnk && lnk.path).replace(/'/g, "''")}'; 'started' | ConvertTo-Json`); how.start = r;
   } else {
@@ -120,10 +126,10 @@ async function doUninstall(n, sp, mode) {
   const integ2 = ps(INTEGRATION);
   const remaining = fs.existsSync(target) ? listAll(target) : [];
   const filesLeft = fs.existsSync(target) ? countFilesSafe(target) : 0;
-  const integrationRemoved = !integ2.registry && integ2.shortcuts.every(s => !s.exists) && !integ2.startMenuDirExists;
+  const integrationRemoved = !integ2.registry && integ2.shortcuts.every(s => !s.exists) && integ2.legacyShortcuts.every(s => !s.exists) && !integ2.startMenuDirExists && !(integ2.allAppLnks || []).length;
   const status = gone && integrationRemoved ? 'passed' : (filesLeft === 0 && integrationRemoved ? 'partial' : 'failed');
   const D = status === 'passed' ? null : await diagnoseCleanup(target);
-  step(n + 'c-removed', status, { mode, uninstallerExit: ue, seconds: Math.round((Date.now() - t1) / 1000), installDirRemoved: gone, filesLeft, remainingEntries: remaining.slice(0, 60), registryAfter: integ2.registry, shortcutsAfter: integ2.shortcuts, startMenuDirExists: integ2.startMenuDirExists, userDataPreservedByDesign: fs.existsSync(path.join(process.env.APPDATA, 'OrunDocs')), timeline, diagnostics: D });
+  step(n + 'c-removed', status, { mode, uninstallerExit: ue, seconds: Math.round((Date.now() - t1) / 1000), installDirRemoved: gone, filesLeft, remainingEntries: remaining.slice(0, 60), registryAfter: integ2.registry, shortcutsAfter: integ2.shortcuts, legacyAfter: integ2.legacyShortcuts, allAppLnksAfter: integ2.allAppLnks, startMenuDirExists: integ2.startMenuDirExists, userDataPreservedByDesign: fs.existsSync(path.join(process.env.APPDATA, 'OrunDocs')), timeline, diagnostics: D });
   return status;
 }
 function countFilesSafe(d) { try { return countFiles(d); } catch { return -1; } }
@@ -152,14 +158,25 @@ const HASHTEST = target => `$t=Get-Date; $ok=0;$err=0;$e1=$null; foreach($f in @
   TARGET = target; EXE = exe;
   S.installTarget = target;
   try {
-    // 0. sha256 of the exact binary
+    // 0. sha256 of the exact binaries (new build + previous build used for the upgrade test)
     const h = crypto.createHash('sha256').update(fs.readFileSync(setupExe)).digest('hex');
     step('0-sha256', h === EXPECT ? 'passed' : 'failed', `sha256=${h} size=${fs.statSync(setupExe).size} expected=${EXPECT}`);
     if (h !== EXPECT) throw Error('sha mismatch');
+    const ho = crypto.createHash('sha256').update(fs.readFileSync(oldSetupExe)).digest('hex');
+    step('0-sha256-previous-build', ho === EXPECT_OLD ? 'passed' : 'failed', `previous OrunDocs build sha256=${ho} expected=${EXPECT_OLD}`);
     step('0-preconditions', fs.existsSync(target) ? 'failed' : 'passed', `install target pre-exists=${fs.existsSync(target)}; integration=${JSON.stringify(ps(INTEGRATION))}`);
 
-    // 1. Run the setup exe as a user would (double-click equivalent), drive its dialogs.
-    if (!(await doInstall('1', 'w0'))) throw Error('install failed');
+    // U1. Install the PREVIOUS build (OrunDocs-named shortcuts), sign in once with it, close it.
+    if (!(await doInstall('U1', 'u0', { setup: oldSetupExe, legacy: true }))) throw Error('previous-build install failed');
+    const oldOut = path.join(outDir, 'previous-build-signin');
+    const pre = await runE2E({ label: 'windows-previous-build', exe, unlockOnly: true, out: oldOut, fixtures: path.join(__dirname, 'fixtures'), port: 9334, saveMode: 'native' });
+    step('U2-previous-build-signed-in', pre.checks['G2-real-account-unlock']?.status === 'passed' && pre.gracefulExit ? 'passed' : 'failed', { gate: pre.checks['G1-signin-gate-shown-workspace-hidden']?.status, login: pre.checks['G2-real-account-unlock']?.detail, gracefulExit: pre.gracefulExit }, ['previous-build-signin/shots/00b-signed-in.png']);
+    await wait(3000);
+
+    // 1. Upgrade: run the NEW setup exe over the existing install (double-click equivalent)
+    if (!(await doInstall('1', 'w0'))) throw Error('upgrade install failed');
+    { const ig = ps(INTEGRATION);
+      step('U3-upgrade-removed-old-shortcuts', ig.legacyShortcuts.every(x => !x.exists) && ig.shortcuts.every(x => x.exists) && (ig.allAppLnks || []).length === 3 && ig.registry && ig.registry.DisplayName === BRAND ? 'passed' : 'failed', { allAppLnks: ig.allAppLnks, legacy: ig.legacyShortcuts.map(x => [x.path, x.exists]), current: ig.shortcuts.map(x => [x.path, x.exists, x.target]), registryDisplayName: ig.registry && ig.registry.DisplayName, userDataKept: fs.existsSync(path.join(process.env.APPDATA, 'OrunDocs')) }); }
 
     // 2. Verify installed files, shortcuts, uninstall registration
     let info = null; try { info = JSON.parse(fs.readFileSync(path.join(target, 'install-info.json'), 'utf8')); } catch (e) { L('install-info read', e.message); }
@@ -167,15 +184,15 @@ const HASHTEST = target => `$t=Get-Date; $ok=0;$err=0;$e1=$null; foreach($f in @
     S.installedIntegration = integ;
     const files = fs.existsSync(target) ? countFiles(target) : 0;
     const lnkOk = Array.isArray(integ.shortcuts) && integ.shortcuts.every(s => s.exists && s.target && s.target.toLowerCase() === exe.toLowerCase()) && /--uninstall/.test(integ.shortcuts[2].args || '');
-    const regOk = integ.registry && integ.registry.DisplayVersion === '4.0.0' && /--uninstall/.test(integ.registry.UninstallString || '') && (integ.registry.InstallLocation || '').toLowerCase() === target.toLowerCase();
+    const regOk = integ.registry && integ.registry.DisplayVersion === '4.0.0' && integ.registry.DisplayName === BRAND && /--uninstall/.test(integ.registry.UninstallString || '') && (integ.registry.InstallLocation || '').toLowerCase() === target.toLowerCase();
     const filesOk = fs.existsSync(exe) && fs.existsSync(path.join(target, 'resources', 'app', 'desktop', 'main.cjs')) && info && info.version === '4.0.0' && info.files.length === files - 2;
-    const unLnk = (integ.shortcuts || []).find(x => /제거\.lnk$/.test(x.path || '')) || {};
+    const unLnk = (integ.shortcuts || []).find(x => /옳은PDF 제거\.lnk$/.test(x.path || '')) || {};
     const unLnkWorkdirIsPrograms = (unLnk.workdir || '').replace(/\\+$/, '').toLowerCase() === path.dirname(target).toLowerCase();
     step('2-installed-files-shortcuts-registry', filesOk && lnkOk && regOk && unLnkWorkdirIsPrograms ? 'passed' : 'failed', { filesOk, lnkOk, regOk, uninstallShortcutWorkdir: unLnk.workdir, unLnkWorkdirIsPrograms, filesOnDisk: files, installInfo: info && { version: info.version, files: info.files.length, byteSize: info.byteSize, installId: info.installId, installedAt: info.installedAt }, registry: integ.registry, shortcuts: integ.shortcuts, pythonExe: fs.existsSync(path.join(target, 'resources', 'runtime', 'python-export', 'python.exe')) });
     save();
 
     // 3. Launch the installed app and run the E2E (native Save dialog driven via UIA)
-    const e2e = await runE2E({ label: 'windows-installed', exe, expectVersion: '4.0.0', productName: 'OrunDocs', out: outDir, fixtures: path.join(__dirname, 'fixtures'), port: 9333, saveMode: 'native',
+    const e2e = await runE2E({ label: 'windows-installed', exe, expectVersion: '4.0.0', productName: BRAND, expectBrand: BRAND, expectAutoUnlockFirst: true, out: outDir, fixtures: path.join(__dirname, 'fixtures'), port: 9333, saveMode: 'native',
       saveHandler: async ({ name, dest, shotPath, kind }) => {
         // For the split result keep the dialog's default name/location (what a user who just presses Save gets).
         const acceptDefault = kind === 'split-pdf';
@@ -187,15 +204,6 @@ const HASHTEST = target => `$t=Get-Date; $ok=0;$err=0;$e1=$null; foreach($f in @
     step('3-e2e-installed-app', e2e.overall === 'passed' ? 'passed' : 'failed', `overall=${e2e.overall}; gracefulExit=${e2e.gracefulExit}; exitCode=${e2e.exitCode}; see e2e-result.json`);
     await wait(3000);
 
-    S.getFileHashInThisEnv = ps(HASHTEST(target)); L('Get-FileHash availability in the (unsanitized) environment', S.getFileHashInThisEnv);
-    // 3b. Read-only: what the cleanup script's hash-then-delete loop will see (PowerShell 5.1 Get-FileHash vs install-info)
-    S.preUninstallHashCheck = ps(`$t=Get-Date; $target='${target.replace(/'/g, "''")}'
-$info=Get-Content -LiteralPath (Join-Path $target 'install-info.json') -Raw | ConvertFrom-Json
-$mis=0;$err=0;$ok=0;$errs=@()
-foreach($r in $info.files){ $p=[IO.Path]::GetFullPath((Join-Path $target ([string]$r))); try{ $h=(Get-FileHash -LiteralPath $p -Algorithm SHA256).Hash; if($h -eq $info.hashes.PSObject.Properties[[string]$r].Value){$ok++}else{$mis++} }catch{ $err++; if($errs.Count -lt 5){$errs+=$_.Exception.Message} } }
-$lock=@(); foreach($f in @('OrunDocs.exe','resources\\app\\desktop\\main.cjs')){ try{ $fsx=[IO.File]::Open((Join-Path $target $f),'Open','ReadWrite','None'); $fsx.Close(); $lock+=@{f=$f;exclusiveOpen='ok'} }catch{ $lock+=@{f=$f;exclusiveOpen=$_.Exception.Message} } }
-@{ok=$ok;mismatch=$mis;errors=$err;errSamples=$errs;seconds=[Math]::Round(((Get-Date)-$t).TotalSeconds,1);lockTest=$lock} | ConvertTo-Json -Depth 4 -Compress`);
-    L('PRE-UNINSTALL HASH CHECK', S.preUninstallHashCheck);
     save();
 
     // 4. Uninstall #1 from the Start-menu shortcut "OrunDocs 제거" (ShellExecute; shortcut's own working folder)
@@ -207,7 +215,7 @@ $lock=@(); foreach($f in @('OrunDocs.exe','resources\\app\\desktop\\main.cjs')){
     if (re === true) await doUninstall('6', 'w3', 'uninstallstring-system32-cwd');
   } catch (e) { S.fatal = String(e.stack || e); L('FATAL', S.fatal); }
   finally {
-    for (const im of ['OrunDocs.exe', path.basename(setupExe)]) { const k = spawnSync('taskkill', ['/IM', im, '/T', '/F'], { encoding: 'utf8' }); if (k.status === 0) L('cleanup: killed leftover', im); }
+    for (const im of ['OrunDocs.exe', path.basename(setupExe), path.basename(oldSetupExe || 'x.exe')]) { const k = spawnSync('taskkill', ['/IM', im, '/T', '/F'], { encoding: 'utf8' }); if (k.status === 0) L('cleanup: killed leftover', im); }
     const v = Object.values(S.steps).map(s => s.status);
     S.overall = S.fatal || v.includes('failed') ? 'failed' : v.includes('partial') ? 'partial' : 'passed';
     S.finishedAt = new Date().toISOString(); save();
