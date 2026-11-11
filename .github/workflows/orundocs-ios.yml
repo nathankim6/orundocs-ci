@@ -87,8 +87,9 @@ jobs:
           } | tee "$V"
           test "$(/usr/libexec/PlistBuddy -c 'Print :CFBundleIdentifier' "$P")" = "com.orundocs.app"
           test "$(/usr/libexec/PlistBuddy -c 'Print :CFBundleShortVersionString' "$P")" = "4.0.0"
-          test "$(/usr/libexec/PlistBuddy -c 'Print :CFBundleDisplayName' "$P")" = "OrunDocs"
-          test "$(/usr/libexec/PlistBuddy -c 'Print :CFBundleVersion' "$P")" = "3"
+          test "$(/usr/libexec/PlistBuddy -c 'Print :CFBundleDisplayName' "$P")" = "옳은PDF"
+          test "$(/usr/libexec/PlistBuddy -c 'Print :CFBundleName' "$P")" = "옳은PDF"
+          test "$(/usr/libexec/PlistBuddy -c 'Print :CFBundleVersion' "$P")" = "4"
           grep -q "OD_TEST_RT_IN_RELEASE=absent" "$V"
           python3 - "$APP/public" <<'PYEOF' | tee -a "$V"
           import sys, os
@@ -107,22 +108,24 @@ jobs:
               print(name + "_IN_RELEASE=" + ("present" if any(f in low for f in forms(t)) else "MISSING"))
           idx = open(os.path.join(root, "index.html"), encoding="utf-8").read()
           print("CSP_IDENTITYTOOLKIT=" + ("present" if "https://identitytoolkit.googleapis.com" in idx else "MISSING"))
+          print("INDEX_HTML_APP_NAME=" + ("present" if "\uc633\uc740PDF" in idx else "MISSING"))
           css = open(os.path.join(root, "android.css"), encoding="utf-8").read()
           print("STATUSBAR_BACKDROP_CSS=" + ("present" if "body::before" in css and "safe-area-inset-top" in css else "missing"))
           PYEOF
           grep -q "GATE_SUBTITLE_IN_RELEASE=absent" "$V"
           grep -q "LOGIN_BUTTON_IN_RELEASE=present" "$V"
           grep -q "CSP_IDENTITYTOOLKIT=present" "$V"
+          grep -q "INDEX_HTML_APP_NAME=present" "$V"
           cd "$RUNNER_TEMP/out"
-          ditto -c -k --sequesterRsrc --keepParent OrunDocs.xcarchive OrunDocs-4.0.0-build3-unsigned.xcarchive.zip
-          shasum -a 256 OrunDocs-4.0.0-build3-unsigned.xcarchive.zip | tee -a "$V"
+          ditto -c -k --sequesterRsrc --keepParent OrunDocs.xcarchive OrunDocs-4.0.0-build4-unsigned.xcarchive.zip
+          shasum -a 256 OrunDocs-4.0.0-build4-unsigned.xcarchive.zip | tee -a "$V"
       - uses: actions/upload-artifact@v4
         if: always()
         with:
           name: orundocs-ios-unsigned-xcarchive
           retention-days: 14
           path: |
-            ${{ runner.temp }}/out/OrunDocs-4.0.0-build3-unsigned.xcarchive.zip
+            ${{ runner.temp }}/out/OrunDocs-4.0.0-build4-unsigned.xcarchive.zip
             ${{ runner.temp }}/out/verify.txt
             ${{ runner.temp }}/out/archive.log
 
