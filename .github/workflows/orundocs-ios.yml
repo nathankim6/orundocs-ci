@@ -67,6 +67,9 @@ jobs:
           tail -25 "$RUNNER_TEMP/out/archive.log"
           exit $rc
       - name: Verify archive
+        env:
+          RE: ${{ secrets.OD_REVIEW_EMAIL }}
+          RP: ${{ secrets.OD_REVIEW_PASSWORD_V2 }}
         run: |
           set -euo pipefail
           APP="$RUNNER_TEMP/out/OrunDocs.xcarchive/Products/Applications/App.app"
@@ -83,14 +86,27 @@ jobs:
             if grep -rl "OD_TEST_RT" "$APP" "$RUNNER_TEMP/out/OrunDocs.xcarchive" ; then echo "OD_TEST_RT_IN_RELEASE=FOUND"; else echo "OD_TEST_RT_IN_RELEASE=absent"; fi
             if grep -rl "installTestSessionHook" "$APP"; then echo "HOOK_SYMBOL_IN_RELEASE=FOUND"; else echo "HOOK_SYMBOL_IN_RELEASE=absent"; fi
             echo "plugins in binary: $(strings "$APP/App" | grep -E '^(OrunAuth|AtelierSaf|AtelierShare)$' | sort -u | tr '\n' ' ')"
+            if [ -n "${RE:-}" ] && grep -rqF -- "$RE" "$APP"; then echo "REVIEW_EMAIL_IN_RELEASE=FOUND"; else echo "REVIEW_EMAIL_IN_RELEASE=absent"; fi
+            if [ -n "${RP:-}" ] && grep -rqF -- "$RP" "$APP"; then echo "REVIEW_PASSWORD_IN_RELEASE=FOUND"; else echo "REVIEW_PASSWORD_IN_RELEASE=absent"; fi
+            if grep -rqE "AMf-[A-Za-z0-9_-]{40,}|eyJhbGciOi[A-Za-z0-9_-]{10,}\.[A-Za-z0-9_-]{10,}\.[A-Za-z0-9_-]{10,}" "$APP"; then echo "TOKEN_PATTERN_IN_RELEASE=FOUND"; else echo "TOKEN_PATTERN_IN_RELEASE=absent"; fi
+            echo "CSP_AI_PROXY=$(grep -q 'https://orunpdf-ai.5554ksj2.workers.dev' "$APP/public/index.html" && echo present || echo MISSING)"
+            echo "BUNDLED_WEB_ICON_SHA256=$(shasum -a 256 "$APP/public/app-icon.png" | cut -d' ' -f1)"
+            echo "SOURCE_WEB_ICON_SHA256=$(shasum -a 256 "$RUNNER_TEMP/od/public/app-icon.png" | cut -d' ' -f1)"
+            echo "SOURCE_APPICON_1024_SHA256=$(shasum -a 256 "$RUNNER_TEMP/od/ios/App/App/Assets.xcassets/AppIcon.appiconset/AppIcon-512@2x.png" | cut -d' ' -f1)"
+            echo "ASSETS_CAR_PRESENT=$(test -s "$APP/Assets.car" && echo yes || echo no)"
             ls -la "$APP" | head -40
           } | tee "$V"
           test "$(/usr/libexec/PlistBuddy -c 'Print :CFBundleIdentifier' "$P")" = "com.orundocs.app"
-          test "$(/usr/libexec/PlistBuddy -c 'Print :CFBundleShortVersionString' "$P")" = "4.0.0"
+          test "$(/usr/libexec/PlistBuddy -c 'Print :CFBundleShortVersionString' "$P")" = "4.1.0"
           test "$(/usr/libexec/PlistBuddy -c 'Print :CFBundleDisplayName' "$P")" = "옳은PDF"
           test "$(/usr/libexec/PlistBuddy -c 'Print :CFBundleName' "$P")" = "옳은PDF"
-          test "$(/usr/libexec/PlistBuddy -c 'Print :CFBundleVersion' "$P")" = "4"
+          test "$(/usr/libexec/PlistBuddy -c 'Print :CFBundleVersion' "$P")" = "5"
           grep -q "OD_TEST_RT_IN_RELEASE=absent" "$V"
+          grep -q "HOOK_SYMBOL_IN_RELEASE=absent" "$V"
+          grep -q "REVIEW_EMAIL_IN_RELEASE=absent" "$V"
+          grep -q "REVIEW_PASSWORD_IN_RELEASE=absent" "$V"
+          grep -q "TOKEN_PATTERN_IN_RELEASE=absent" "$V"
+          grep -q "CSP_AI_PROXY=present" "$V"
           python3 - "$APP/public" <<'PYEOF' | tee -a "$V"
           import sys, os
           root = sys.argv[1]
@@ -117,22 +133,22 @@ jobs:
           grep -q "CSP_IDENTITYTOOLKIT=present" "$V"
           grep -q "INDEX_HTML_APP_NAME=present" "$V"
           cd "$RUNNER_TEMP/out"
-          ditto -c -k --sequesterRsrc --keepParent OrunDocs.xcarchive OrunDocs-4.0.0-build4-unsigned.xcarchive.zip
-          shasum -a 256 OrunDocs-4.0.0-build4-unsigned.xcarchive.zip | tee -a "$V"
+          ditto -c -k --sequesterRsrc --keepParent OrunDocs.xcarchive OrunDocs-4.1.0-build5-unsigned.xcarchive.zip
+          shasum -a 256 OrunDocs-4.1.0-build5-unsigned.xcarchive.zip | tee -a "$V"
       - uses: actions/upload-artifact@v4
         if: always()
         with:
           name: orundocs-ios-unsigned-xcarchive
           retention-days: 14
           path: |
-            ${{ runner.temp }}/out/OrunDocs-4.0.0-build4-unsigned.xcarchive.zip
+            ${{ runner.temp }}/out/OrunDocs-4.1.0-build5-unsigned.xcarchive.zip
             ${{ runner.temp }}/out/verify.txt
             ${{ runner.temp }}/out/archive.log
 
   uitest:
     if: ${{ inputs.run_tests }}
     runs-on: macos-15
-    timeout-minutes: 90
+    timeout-minutes: 140
     env:
       TEST_RUNNER_OD_REVIEW_EMAIL: ${{ secrets.OD_REVIEW_EMAIL }}
       TEST_RUNNER_OD_REVIEW_PASSWORD: ${{ secrets.OD_REVIEW_PASSWORD_V2 }}
@@ -170,9 +186,29 @@ jobs:
           body = json.dumps({"email": os.environ["RE"], "password": os.environ["RP"], "returnSecureToken": True}).encode()
           try:
               r = urllib.request.urlopen(urllib.request.Request("https://identitytoolkit.googleapis.com/v1/accounts:signInWithPassword?key=" + key, data=body, headers={"content-type": "application/json"}), timeout=30)
-              rt = json.load(r).get("refreshToken", "")
+              j = json.load(r); rt = j.get("refreshToken", ""); idt = j.get("idToken", "")
           except Exception as e:
-              rt = ""; print("signInWithPassword failed:", type(e).__name__)
+              rt = idt = ""; print("signInWithPassword failed:", type(e).__name__)
+          if idt: print("::add-mask::" + idt)
+          out = os.path.join(os.environ["RUNNER_TEMP"], "out"); os.makedirs(out, exist_ok=True)
+          def status(tok):
+              req = urllib.request.Request("https://orunpdf-ai.5554ksj2.workers.dev/v1/status", headers={"Authorization": "Bearer " + tok})
+              try:
+                  r2 = urllib.request.urlopen(req, timeout=30); body = json.load(r2); code = r2.status
+              except urllib.error.HTTPError as he:
+                  code = he.code
+                  try: body = json.loads(he.read().decode() or "{}")
+                  except Exception: body = {}
+              except Exception as ex:
+                  return "network-error " + type(ex).__name__
+              keep = {k: body.get(k) for k in ("allowed", "spentUSD", "remainingUSD", "estimatedCostPerImageUSD", "error") if k in body}
+              return "HTTP %s %s" % (code, json.dumps(keep, ensure_ascii=False))
+          import urllib.error
+          lines = ["AI backend /v1/status (read-only, no image sent):",
+                   "  real review-account Firebase ID token -> " + (status(idt) if idt else "skipped (no id token)"),
+                   "  forged JWT                            -> " + status("eyJhbGciOiJSUzI1NiJ9.eyJmb3JnZWQiOnRydWV9.Zm9yZ2Vk"),
+                   "  no/garbage token                      -> " + status("not-a-token")]
+          open(os.path.join(out, "backend-auth.log"), "w").write("\n".join(lines) + "\n"); print("\n".join(lines))
           if rt:
               print("::add-mask::" + rt)
               with open(os.environ["GITHUB_ENV"], "a") as f: f.write("TEST_RUNNER_OD_TEST_RT=" + rt + "\n")
@@ -291,7 +327,9 @@ jobs:
             mkdir -p "$RUNNER_TEMP/out/shots/$name"
             xcrun simctl boot "$udid" || true
             xcrun simctl bootstatus "$udid" -b
-            xcrun simctl addmedia "$udid" "$GITHUB_WORKSPACE/ios-ci/fixtures/exam-photo.jpg"
+            xcrun simctl addmedia "$udid" "$GITHUB_WORKSPACE/ios-ci/fixtures/exam-photo.jpg" "$GITHUB_WORKSPACE"/ios-ci/fixtures/batch/*.jpg
+            if [ "$name" = "iphone" ]; then export TEST_RUNNER_OD_GPT=1; else unset TEST_RUNNER_OD_GPT; fi
+            export TEST_RUNNER_OD_BATCH_N=20
             xcrun simctl status_bar "$udid" override --time 9:41 --dataNetwork wifi --wifiMode active --wifiBars 3 --cellularMode active --cellularBars 4 --batteryState charged --batteryLevel 100 || echo "status_bar override failed"
             G=$(xcrun simctl get_app_container "$udid" com.apple.DocumentsApp groups 2>/dev/null | grep -i LocalStorage | sed 's#^[^/]*##')
             if [ -n "$G" ]; then mkdir -p "$G/File Provider Storage" && cp "$GITHUB_WORKSPACE/ios-ci/fixtures/preview-six-pages.pdf" "$G/File Provider Storage/" && echo "PDF fixture placed in On My device storage"; ls -la "$G/File Provider Storage"; else echo "Files local storage container not found"; xcrun simctl get_app_container "$udid" com.apple.DocumentsApp groups || true; fi
@@ -311,12 +349,12 @@ jobs:
         if: always()
         run: |
           python3 - <<'EOF'
-          import os
+          import os, re
           toks = [os.environ.get(k, "") for k in ("TEST_RUNNER_OD_TEST_RT", "TEST_RUNNER_OD_REVIEW_PASSWORD", "TEST_RUNNER_OD_REVIEW_EMAIL")]
           toks = [t for t in toks if len(t) >= 4]
           root = os.path.join(os.environ["RUNNER_TEMP"], "out")
           n = 0
-          if toks and os.path.isdir(root):
+          if os.path.isdir(root):
               for dp, _, fs in os.walk(root):
                   for f in fs:
                       p = os.path.join(dp, f)
@@ -325,6 +363,8 @@ jobs:
                           if f.endswith(".log"):
                               # XCTest echoes typed text ("Type '...' into"): drop those lines entirely
                               s = b"\n".join(l for l in s.split(b"\n") if b"Type '" not in l and b"typeText" not in l)
+                          s = re.sub(rb"eyJ[A-Za-z0-9_-]{8,}\.[A-Za-z0-9_-]{8,}\.[A-Za-z0-9_-]{8,}", b"<jwt-redacted>", s)
+                          s = re.sub(rb"AMf-[A-Za-z0-9_-]{30,}", b"<refresh-token-redacted>", s)
                           for tok in toks:
                               vs = {tok, tok.lower()}
                               if "@" in tok and len(tok.split("@")[0]) >= 4: vs.add(tok.split("@")[0]); vs.add(tok.split("@")[0].lower())
@@ -335,12 +375,12 @@ jobs:
           print("redacted files:", n)
           # final leak scan over EVERY file that will be uploaded (text and binary): must be 0
           leaks = 0
-          if toks and os.path.isdir(root):
+          if os.path.isdir(root):
               for dp, _, fs in os.walk(root):
                   for f in fs:
                       p = os.path.join(dp, f)
                       b = open(p, "rb").read()
-                      hit = any(t.encode() in b or t.lower().encode() in b for t in toks) or b"::add-mask::" in b
+                      hit = any(t.encode() in b or t.lower().encode() in b for t in toks) or b"::add-mask::" in b or re.search(rb"AMf-[A-Za-z0-9_-]{30,}", b) is not None
                       if hit:
                           leaks += 1
                           os.remove(p)
