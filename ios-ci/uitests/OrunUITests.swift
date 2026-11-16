@@ -305,6 +305,10 @@ final class OrunUITests: XCTestCase {
         // clear the "◀ Safari" return breadcrumb left by the sign-in hand-off: go Home and reopen from SpringBoard
         XCUIDevice.shared.press(.home)
         Thread.sleep(forTimeInterval: 2)
+        let sbIcon = springboard.icons["옳은PDF"]
+        let sbOk = sbIcon.waitForExistence(timeout: 5)
+        shot("c0b-homescreen-icon")
+        record("c0b-homescreen-icon", sbOk, "springboard icon '옳은PDF' present=\(sbOk)")
         app.activate()
         _ = chip.waitForExistence(timeout: 20)
         Thread.sleep(forTimeInterval: 2)
@@ -341,63 +345,49 @@ final class OrunUITests: XCTestCase {
         if menuOk { tapCenter(chip); Thread.sleep(forTimeInterval: 1) } // close menu without pressing anything
         if del.exists && del.isHittable { app.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.9)).tap(); Thread.sleep(forTimeInterval: 1) }
 
-        // c: exam scan
-        let search = any(app, "placeholderValue CONTAINS '도구 이름' OR label == 'PDF 도구 검색'")
-        if search.waitForExistence(timeout: 10) {
-            tapCenter(search); Thread.sleep(forTimeInterval: 1)
-            app.typeText("exam-scan"); Thread.sleep(forTimeInterval: 1)
-            dismissKeyboard(app)
-        }
-        let card = app.buttons["시험지 필기 지우기 도구 열기"]
-        guard card.waitForExistence(timeout: 10) else { record("c2-exam-open", false); return }
-        tapCenter(card)
-        let pick = any(app, "label CONTAINS '사진 선택' AND elementType == \(btnType)")
-        guard pick.waitForExistence(timeout: 15) else { record("c2-exam-open", false); return }
-        tapCenter(pick)
-        if let lib = waitAny([any(app, "label == 'Photo Library'"), any(app, "label == 'Photos'"), any(app, "label == '사진 보관함'")], timeout: 10) { lib.tap() }
-        let photos = app.images.matching(NSPredicate(format: "label BEGINSWITH 'Photo, '"))
-        let pickEnd = Date().addingTimeInterval(60)
-        repeat { Thread.sleep(forTimeInterval: 2) } while photos.count == 0 && Date() < pickEnd
-        Thread.sleep(forTimeInterval: 2)
-        var picked = false
-        var target: XCUIElement? = nil
-        let yearRx = try! NSRegularExpression(pattern: "\\b(19|20)\\d\\d\\b")
-        for i in 0..<photos.count {
-            let el = photos.element(boundBy: i); let l = el.label
-            if yearRx.firstMatch(in: l, range: NSRange(l.startIndex..., in: l)) == nil { target = el; break }
-        }
-        if target == nil && photos.count > 0 { target = photos.element(boundBy: 0) }
-        if let t = target {
-            let addCandidates = [app.buttons["Add"], app.buttons["추가"], app.buttons["Done"]]
-            selectLoop: for attempt in 0..<3 {
-                t.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.5)).tap()
-                let addEnd = Date().addingTimeInterval(5)
-                while Date() < addEnd {
-                    for b in addCandidates where b.exists && b.isEnabled { b.tap(); picked = true; break selectLoop }
-                    if !app.buttons["Cancel"].exists && !app.buttons["Done"].exists { picked = true; break selectLoop }
-                    Thread.sleep(forTimeInterval: 0.5)
-                }
-                print("ODNOTE: photo selection not confirmed after attempt \(attempt + 1); retrying")
-            }
-        }
-        record("c3-photo-picked", picked, "photos=\(photos.count)")
-        let run = any(app, "label CONTAINS '필기 지우기 실행' AND elementType == \(btnType)")
+        // c: exam scan, 20-photo local batch -> one PDF
+        let examOpen = openExamTool(app)
+        let header = any(app, "label CONTAINS '사진 낙서 제거' AND label CONTAINS 'PDF' AND elementType != \(btnType)")
+        record("c2-exam-open", examOpen && header.exists, "header='사진 낙서 제거 → PDF' present=\(header.exists)")
+        guard examOpen else { shot("c2-exam-missing"); dump("c2-exam-missing", app); return }
+        shot("c2-exam-tool")
+        let want = Int(ProcessInfo.processInfo.environment["OD_BATCH_N"] ?? "20") ?? 20
+        let (tappedN, confirmedPick) = pickPhotos(app, match: "2024", want: want)
+        let pages = app.buttons.matching(NSPredicate(format: "label ENDSWITH '번 페이지 열기'"))
+        var loaded = 0
+        let loadEnd = Date().addingTimeInterval(90)
+        repeat { Thread.sleep(forTimeInterval: 2); let c = pages.count; if c == loaded && c > 0 && c >= tappedN { break }; loaded = c } while Date() < loadEnd
+        loaded = pages.count
+        record("c3-batch-photos-loaded", loaded == want, "wanted=\(want) tappedTiles=\(tappedN) pickerConfirmed=\(confirmedPick) pagesInApp=\(loaded)")
+        guard loaded > 0 else { shot("c3-no-pages"); dump("c3-no-pages", app); return }
+        // crop step
+        let corners = app.buttons.matching(NSPredicate(format: "label ENDSWITH '모서리'"))
+        let cropTab = any(app, "label == '영역 맞추기' AND elementType == \(btnType)")
+        if cropTab.exists { reveal(cropTab) }
+        Thread.sleep(forTimeInterval: 1.5)
+        shot("c3b-crop-step")
+        record("c3b-crop-step", corners.count >= 4, "cornerHandles=\(corners.count)")
+        let run = any(app, "(label CONTAINS '사진 낙서 제거' OR label CONTAINS '필기 지우기 실행') AND elementType == \(btnType)")
         guard run.waitForExistence(timeout: 30) else { shot("c4-no-run"); record("c4-processed", false, "run button not found"); return }
         Thread.sleep(forTimeInterval: 2)
-        tapCenter(run)
-        let done = any(app, "label CONTAINS '처리 완료'")
-        let doneOk = done.waitForExistence(timeout: 240)
-        record("c4-processed", doneOk, doneOk ? done.label : "")
-        guard doneOk else { shot("c4-processed"); return }
+        reveal(run); tapCenter(run)
+        let t0 = Date()
+        let endLabel = waitBatchEnd(app, timeout: TimeInterval(60 + 45 * loaded))
+        let secs = Int(Date().timeIntervalSince(t0))
+        let (doneN, failN) = parseBatch(endLabel ?? "")
+        record("c4-processed", endLabel != nil && doneN == loaded && failN == 0, "pages=\(loaded) done=\(doneN) incomplete=\(failN) seconds=\(secs) status=\(endLabel ?? "timeout")")
+        guard endLabel != nil else { shot("c4-processed-timeout"); dump("c4-timeout", app); return }
         let canvas = any(app, "label == '필기 지운 결과'")
         if canvas.exists { reveal(canvas); Thread.sleep(forTimeInterval: 1) }
         shot("c4-result")
         appshot("03")
+        let firstThumb = pages.element(boundBy: 0)
+        if firstThumb.exists { reveal(firstThumb); Thread.sleep(forTimeInterval: 1); shot("c4b-batch-pages"); appshot("05-batch") }
 
-        // Files save (PDF)
+        // Files save (one PDF with all pages)
         let save = app.buttons["저장"]
         if save.waitForExistence(timeout: 5) { tapCenter(save) }
-        _ = waitAny([app.buttons["Save"], app.buttons["Move"], app.buttons["Browse"]], timeout: 90)
+        _ = waitAny([app.buttons["Save"], app.buttons["Move"], app.buttons["Browse"]], timeout: 120)
         Thread.sleep(forTimeInterval: 2)
         let local = waitAny([any(app, "label == 'On My iPhone'"), any(app, "label == 'On My iPad'")], timeout: 20)
         var localLabel = local.map { $0.exists ? $0.label : "gone" } ?? "none"
@@ -410,14 +400,29 @@ final class OrunUITests: XCTestCase {
         let confirm = waitAny([app.buttons["Save"], app.buttons["Move"], app.buttons["Done"]], timeout: 30)
         if let c = confirm, c.exists, c.isEnabled { c.tap() }
         let saved = any(app, "label CONTAINS '저장을 완료'")
-        let savedOk = saved.waitForExistence(timeout: 30)
+        let savedOk = saved.waitForExistence(timeout: 120)
         Thread.sleep(forTimeInterval: 1)
         if savedOk { reveal(saved) }
         shot("c6-saved")
         record("c5-save-files", savedOk, "location=\(localLabel) status=\(savedOk && saved.exists ? saved.label : "")")
         if !savedOk, app.buttons["Cancel"].exists { app.buttons["Cancel"].tap(); Thread.sleep(forTimeInterval: 2) }
 
-        // App Store shot 4: PDF 분할 with the 6-page fixture from Files
+        // share sheet (native UIActivityViewController)
+        let share = app.buttons["공유"]
+        var shareOk = false
+        if share.waitForExistence(timeout: 5) {
+            reveal(share); tapCenter(share)
+            let sheet = waitAny([app.otherElements["ActivityListView"], app.cells["Save to Files"], app.buttons["Close"]], timeout: 60)
+            Thread.sleep(forTimeInterval: 2)
+            shot("c7-share-sheet")
+            shareOk = sheet != nil
+            if app.buttons["Close"].exists && app.buttons["Close"].isHittable { app.buttons["Close"].tap() }
+            else { app.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.1)).tap() }
+            Thread.sleep(forTimeInterval: 2)
+        }
+        record("c7-share-sheet", shareOk)
+
+        // PDF 분할: open the saved batch PDF from Files and check its page count in the preview
         let back = any(app, "label == '← 모든 도구' AND elementType == \(btnType)")
         if back.exists { tapCenter(back); Thread.sleep(forTimeInterval: 2) }
         let split = app.buttons["PDF 분할 도구 열기"]
@@ -439,34 +444,27 @@ final class OrunUITests: XCTestCase {
         guard choose.waitForExistence(timeout: 10) else { record("e-split-preview", false, "choose button not found"); return }
         Thread.sleep(forTimeInterval: 1)
         tapCenter(choose)
-        let fileQ = "label BEGINSWITH 'preview-six-pages'"
         var fileTapped = false
-        let navEnd = Date().addingTimeInterval(40)
-        while Date() < navEnd {
-            let cell = app.cells.matching(NSPredicate(format: "label CONTAINS 'preview-six-pages'")).firstMatch
-            let f = any(app, fileQ)
-            if cell.exists || f.exists {
-                let other = app.cells.matching(NSPredicate(format: "label CONTAINS 'exam-photo'")).firstMatch
-                let pickerOpen = { app.cells.matching(NSPredicate(format: "label CONTAINS 'preview-six-pages'")).firstMatch.exists }
-                Thread.sleep(forTimeInterval: 4) // let the file provider finish indexing the fixture
-                let tries: [(String, () -> Void)] = [
-                    ("tap", { cell.tap() }),
-                    ("tap-again", { Thread.sleep(forTimeInterval: 2); if cell.exists { cell.tap() } }),
-                    ("thumbnail", { cell.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.3)).tap() }),
-                    ("doubleTap", { cell.doubleTap() }),
-                    ("label", { f.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.5)).tap() }),
-                    ("exam-pdf", { if other.exists { other.tap() } }),
-                ]
-                for (name, act) in tries {
-                    act(); Thread.sleep(forTimeInterval: 2.5)
-                    if app.buttons["Open"].exists && app.buttons["Open"].isEnabled { app.buttons["Open"].tap(); Thread.sleep(forTimeInterval: 1.5) }
-                    if !pickerOpen() { fileTapped = true; print("ODNOTE: picker accepted file via \(name)"); break }
-                    print("ODNOTE: picker still open after \(name)")
+        var pickedName = "none"
+        let navEnd = Date().addingTimeInterval(60)
+        while Date() < navEnd && !fileTapped {
+            let batchCell = app.cells.matching(NSPredicate(format: "label CONTAINS '필기제거'")).firstMatch
+            let sixCell = app.cells.matching(NSPredicate(format: "label CONTAINS 'preview-six-pages'")).firstMatch
+            if batchCell.exists || sixCell.exists {
+                Thread.sleep(forTimeInterval: 3)
+                for (name, cell) in [("batch-pdf", batchCell), ("six-page-fixture", sixCell)] where cell.exists {
+                    for attempt in 0..<2 {
+                        if cell.exists { cell.tap() }
+                        Thread.sleep(forTimeInterval: 2.5)
+                        if app.buttons["Open"].exists && app.buttons["Open"].isEnabled { app.buttons["Open"].tap(); Thread.sleep(forTimeInterval: 1.5) }
+                        if !batchCell.exists && !sixCell.exists { fileTapped = true; pickedName = name; break }
+                        print("ODNOTE: picker still open after \(name) tap \(attempt + 1)")
+                    }
+                    if fileTapped { break }
                 }
                 if !fileTapped {
                     shot("e1-picker-stuck")
                     for b in [app.buttons["Cancel"], app.buttons["Close"]] where b.exists && b.isHittable { b.tap(); Thread.sleep(forTimeInterval: 2); break }
-                    if pickerOpen(), let x = [any(app, "label == 'Close' OR identifier == 'Close'"), any(app, "label == '닫기'")].first(where: { $0.exists && $0.isHittable }) { x.tap(); Thread.sleep(forTimeInterval: 2) }
                 }
                 break
             }
@@ -477,14 +475,10 @@ final class OrunUITests: XCTestCase {
             Thread.sleep(forTimeInterval: 1)
         }
         if !fileTapped { shot("e1-picker"); dump("e1-picker", app) }
-        Thread.sleep(forTimeInterval: 1.5)
-        if app.buttons["Open"].exists && app.buttons["Open"].isEnabled { app.buttons["Open"].tap() }
         let multi = any(app, "label == '여러 페이지' AND (elementType == \(btnType) OR elementType == \(XCUIElement.ElementType.switch.rawValue))")
         let selAll = any(app, "label == '전체 선택'")
-        let previewOk = waitAny([multi, selAll], timeout: 40) != nil
-        if multi.exists { tapCenter(multi) }
-        Thread.sleep(forTimeInterval: 5)
-        // frame the preview: put the "PDF 페이지 미리보기" heading near the top of the window
+        let previewOk = waitAny([multi, selAll], timeout: 60) != nil
+        Thread.sleep(forTimeInterval: 3)
         let heading = any(app, "label == 'PDF 페이지 미리보기'")
         if heading.exists {
             reveal(heading)
@@ -496,12 +490,179 @@ final class OrunUITests: XCTestCase {
             }
         } else if multi.exists { reveal(multi) }
         if multi.exists && multi.isHittable { multi.tap() }
-        Thread.sleep(forTimeInterval: 5)
+        Thread.sleep(forTimeInterval: 6)
         shot("e2-split-preview")
         dump("e2-split-preview", app)
         appshot("04")
-        let sixLabel = any(app, "label CONTAINS '6' AND label CONTAINS '페이지'")
-        record("e-split-preview", fileTapped && previewOk, "fileFromFiles=\(fileTapped) previewControls=\(previewOk) pageCountLabel=\(sixLabel.exists ? sixLabel.label : "n/a")")
+        let countLabel = any(app, "label CONTAINS '페이지' AND (label CONTAINS '/ ' OR label BEGINSWITH '\(loaded)페이지')")
+        let totalEl = app.staticTexts.matching(NSPredicate(format: "label BEGINSWITH '/ '")).firstMatch
+        let totalTxt = totalEl.exists ? totalEl.label : (countLabel.exists ? countLabel.label : "n/a")
+        let pdfPagesOk = pickedName == "batch-pdf" && (totalTxt.contains("/ \(loaded)") || totalTxt.contains("\(loaded)페이지"))
+        record("e-split-preview", fileTapped && previewOk, "file=\(pickedName) previewControls=\(previewOk) pageCount=\(totalTxt)")
+        record("e2-batch-pdf-pages", pdfPagesOk, "expected \(loaded) pages in saved PDF; seen=\(totalTxt) file=\(pickedName)")
+    }
+
+    // MARK: 4.1.0 helpers
+    private func openExamTool(_ app: XCUIApplication) -> Bool {
+        let back = any(app, "label == '← 모든 도구' AND elementType == \(btnType)")
+        if back.exists { tapCenter(back); Thread.sleep(forTimeInterval: 2) }
+        let search = any(app, "placeholderValue CONTAINS '도구 이름' OR label == 'PDF 도구 검색'")
+        if search.waitForExistence(timeout: 10) {
+            tapCenter(search); Thread.sleep(forTimeInterval: 1)
+            let cur = (search.value as? String) ?? ""
+            if !cur.isEmpty && !cur.contains("도구 이름") { app.typeText(String(repeating: XCUIKeyboardKey.delete.rawValue, count: cur.count + 2)) }
+            app.typeText("exam-scan"); Thread.sleep(forTimeInterval: 1)
+            dismissKeyboard(app)
+        }
+        let card = app.buttons.matching(NSPredicate(format: "label ENDSWITH '도구 열기' AND (label CONTAINS '필기' OR label CONTAINS '낙서')")).firstMatch
+        guard card.waitForExistence(timeout: 10) else { return false }
+        tapCenter(card)
+        return any(app, "label CONTAINS '사진 선택' AND elementType == \(btnType)").waitForExistence(timeout: 15)
+    }
+
+    /// Multi-select PHPicker tiles whose label contains `match`; returns (distinct tiles tapped, Add/Done confirmed).
+    private func pickPhotos(_ app: XCUIApplication, match: String, want: Int) -> (Int, Bool) {
+        let pick = any(app, "label CONTAINS '사진 선택' AND elementType == \(btnType)")
+        tapCenter(pick)
+        if let lib = waitAny([any(app, "label == 'Photo Library'"), any(app, "label == 'Photos'"), any(app, "label == '사진 보관함'")], timeout: 10) { lib.tap() }
+        let all = app.images.matching(NSPredicate(format: "label BEGINSWITH 'Photo, '"))
+        let end = Date().addingTimeInterval(60)
+        repeat { Thread.sleep(forTimeInterval: 2) } while all.count == 0 && Date() < end
+        Thread.sleep(forTimeInterval: 3)
+        shot("pick-grid-\(want)")
+        let tiles = app.images.matching(NSPredicate(format: "label BEGINSWITH 'Photo, ' AND label CONTAINS %@", match))
+        var tapped = Set<String>()
+        let win = app.windows.firstMatch.frame
+        var idle = 0
+        for _ in 0..<12 {
+            var progressed = false
+            let n = tiles.count
+            for i in 0..<n where tapped.count < want {
+                let t = tiles.element(boundBy: i)
+                guard t.exists else { continue }
+                let l = t.label, f = t.frame
+                if tapped.contains(l) || f.isEmpty { continue }
+                if f.minY < win.minY + 120 || f.maxY > win.maxY - 110 { continue }
+                t.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.5)).tap()
+                tapped.insert(l); progressed = true
+                Thread.sleep(forTimeInterval: 0.7)
+            }
+            if tapped.count >= want { break }
+            idle = progressed ? 0 : idle + 1
+            if idle >= 3 { break }
+            app.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.72)).press(forDuration: 0.05, thenDragTo: app.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.5)), withVelocity: .slow, thenHoldForDuration: 0.4)
+            Thread.sleep(forTimeInterval: 1.2)
+        }
+        shot("pick-selected-\(want)")
+        var confirmed = false
+        let addEnd = Date().addingTimeInterval(8)
+        while Date() < addEnd && !confirmed {
+            for b in [app.buttons["Add"], app.buttons["추가"], app.buttons["Done"]] where b.exists && b.isEnabled { b.tap(); confirmed = true; break }
+            if !confirmed { Thread.sleep(forTimeInterval: 0.5) }
+        }
+        return (tapped.count, confirmed)
+    }
+
+    private func waitBatchEnd(_ app: XCUIApplication, timeout: TimeInterval) -> String? {
+        let done = any(app, "label CONTAINS '처리가 끝났습니다' OR label CONTAINS '처리를 취소했습니다'")
+        return done.waitForExistence(timeout: timeout) ? done.label : nil
+    }
+
+    private func parseBatch(_ s: String) -> (Int, Int) {
+        let rx = try! NSRegularExpression(pattern: "(\\d+)장 완료 · (\\d+)장 미완료")
+        guard let m = rx.firstMatch(in: s, range: NSRange(s.startIndex..., in: s)),
+              let a = Range(m.range(at: 1), in: s), let b = Range(m.range(at: 2), in: s) else { return (-1, -1) }
+        return (Int(s[a]) ?? -1, Int(s[b]) ?? -1)
+    }
+
+    // MARK: forged session must be denied (debug hook seeds a fake refresh token; online verification must reject it)
+    func test1b_ForgedTokenDenied() {
+        let app = XCUIApplication()
+        currentApp = app
+        app.terminate()
+        app.launchEnvironment["OD_TEST_RT"] = "forged-refresh-token-" + String(repeating: "Q9", count: 60)
+        app.launch()
+        let denied = any(app, "label CONTAINS '허용되지 않은' OR label CONTAINS '허용이 취소'")
+        let deniedOk = denied.waitForExistence(timeout: 60)
+        Thread.sleep(forTimeInterval: 1.5)
+        let locked = loginButton(app).exists
+        let unlocked = any(app, "label CONTAINS '@' AND elementType == \(btnType)").exists
+        shot("a2-forged-denied")
+        record("a2-forged-token-denied", deniedOk && locked && !unlocked, "deniedMessage=\(deniedOk ? denied.label : "none") gateLocked=\(locked) chipShown=\(unlocked)")
+        app.terminate()
+    }
+
+    // MARK: one real GPT page (iPhone only; OD_GPT=1). Gates: radio, per-batch consent, native confirm. No retries.
+    func test4_GPTOnePage() {
+        guard ProcessInfo.processInfo.environment["OD_GPT"] == "1" else { return }
+        let app = XCUIApplication()
+        currentApp = app
+        app.terminate(); Thread.sleep(forTimeInterval: 2)
+        app.launch()
+        guard accountChip(app).waitForExistence(timeout: 60) else { record("g0-unlocked", false, "persisted session missing"); return }
+        guard openExamTool(app) else { record("g1-exam-open", false); return }
+        let (n, ok) = pickPhotos(app, match: "2024", want: 1)
+        let pages = app.buttons.matching(NSPredicate(format: "label ENDSWITH '번 페이지 열기'"))
+        let loadEnd = Date().addingTimeInterval(30)
+        while pages.count < 1 && Date() < loadEnd { Thread.sleep(forTimeInterval: 1) }
+        record("g1-one-photo", pages.count == 1, "tapped=\(n) confirmed=\(ok) pages=\(pages.count)")
+        guard pages.count == 1 else { shot("g1-no-photo"); return }
+        let radio = any(app, "label CONTAINS 'GPT AI(온라인'")
+        guard radio.waitForExistence(timeout: 10) else { record("g2-gpt-radio", false, "radio missing"); return }
+        reveal(radio); radio.tap(); Thread.sleep(forTimeInterval: 1.5)
+        let consent = any(app, "label CONTAINS 'OpenAI로 전송하고'")
+        let consentShown = consent.waitForExistence(timeout: 8)
+        shot("g2-gpt-selected")
+        record("g2-gpt-radio", consentShown, "radioValue=\(String(describing: radio.value)) consentCheckboxShown=\(consentShown)")
+        guard consentShown else { dump("g2-gpt", app); return }
+        let run = any(app, "label CONTAINS '사진 낙서 제거' AND elementType == \(btnType)")
+        // gate 1: run without consent must be refused locally (no network)
+        reveal(run); tapCenter(run)
+        let needConsent = any(app, "label CONTAINS '동의가 필요합니다'")
+        let g1 = needConsent.waitForExistence(timeout: 10)
+        let alert = app.alerts.firstMatch
+        record("g3-consent-required", g1 && !alert.exists, "refusedWithoutConsent=\(g1) dialogShown=\(alert.exists)")
+        shot("g3-no-consent")
+        let errQ = "label CONTAINS '서버가 아직' OR label CONTAINS 'AI 응답' OR label CONTAINS 'AI 이미지' OR label CONTAINS '인터넷 연결이 필요' OR label CONTAINS '온라인 로그인 확인' OR label CONTAINS 'AI 요청 결과' OR label CONTAINS '전송할 사진' OR label CONTAINS '전송 크기' OR label CONTAINS '사용 한도' OR label CONTAINS 'AI 사용 권한' OR label CONTAINS '처리하지 못했습니다' OR label CONTAINS 'AI 처리에 실패'"
+        func armAndRun() -> XCUIElement? {
+            reveal(consent); consent.tap(); Thread.sleep(forTimeInterval: 1)
+            reveal(run); tapCenter(run)
+            let end = Date().addingTimeInterval(60)
+            while Date() < end {
+                if alert.exists { return alert }
+                if any(app, errQ).exists { return nil }
+                Thread.sleep(forTimeInterval: 1)
+            }
+            return nil
+        }
+        func okButton(_ a: XCUIElement) -> XCUIElement {
+            [a.buttons["OK"], a.buttons["Ok"], a.buttons["확인"]].first(where: { $0.exists }) ?? a.buttons.element(boundBy: a.buttons.count - 1)
+        }
+        // gate 2: native confirm -> Cancel must not send
+        guard let a1 = armAndRun() else {
+            let e = any(app, errQ); shot("g4-no-confirm"); dump("g4-no-confirm", app)
+            record("g4-native-confirm", false, "no confirm dialog; status=\(e.exists ? e.label : "none (timeout)")"); return
+        }
+        let confirmText = a1.label + " " + a1.staticTexts.allElementsBoundByIndex.map { $0.label }.joined(separator: " | ")
+        shot("g4-confirm-dialog")
+        (a1.buttons["Cancel"].exists ? a1.buttons["Cancel"] : a1.buttons.element(boundBy: 0)).tap()
+        let cancelled = any(app, "label CONTAINS 'AI 전송을 취소했습니다'").waitForExistence(timeout: 10)
+        record("g4-native-confirm", confirmText.contains("GPT AI") && cancelled, "dialog='\(confirmText.prefix(160))' cancelRespected=\(cancelled)")
+        // real single GPT page: consent + confirm OK, wait once, no retry
+        guard let a2 = armAndRun() else {
+            let e = any(app, errQ); shot("g5-no-confirm"); record("g5-gpt-page", false, "second confirm missing; status=\(e.exists ? e.label : "none")"); return
+        }
+        okButton(a2).tap()
+        let t0 = Date()
+        let endLabel = waitBatchEnd(app, timeout: 240)
+        let secs = Int(Date().timeIntervalSince(t0))
+        let (d, f) = parseBatch(endLabel ?? "")
+        let canvas = any(app, "label == '필기 지운 결과'")
+        if canvas.exists { reveal(canvas); Thread.sleep(forTimeInterval: 1.5) }
+        shot("g5-gpt-result")
+        dump("g5-gpt-result", app)
+        let pageErr = any(app, errQ)
+        record("g5-gpt-page", endLabel != nil && d == 1 && f == 0, "seconds=\(secs) status=\(endLabel ?? "no end status within 240 s (not retried)") pageError=\(pageErr.exists ? pageErr.label : "none")")
     }
 
     // MARK: App Review screen recording flow (runs only with OD_RECORD=1; screen is recorded by simctl on the host)
