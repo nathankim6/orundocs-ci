@@ -3,8 +3,8 @@
   "version": "4.1.0",
   "versionCode": 4010001,
   "package": "com.orundocs.app",
-  "sourceSha256": "1cc92ebdc58f123d0c832e879b75d2736cd39c7e8d5108d2325635efdca94640",
-  "sourceBytes": 9782846,
+  "sourceSha256": "58f81748275ef60bb7619188f3695bacf0eea5217723bc5fd8597733fadfabe5",
+  "sourceBytes": 9783050,
   "files": [
     {
       "path": "LICENSE",
@@ -383,8 +383,8 @@
     },
     {
       "path": "frontend-tests/frontend.test.mjs",
-      "bytes": 7182,
-      "sha256": "6af90cf8b3113e593e3d3d9ece2592232b5a4a8759b01aae48e99ce05c307041"
+      "bytes": 7487,
+      "sha256": "ef25cf9e76a9b4419549d8318240f46ae66ee32d6e13aecb807cf7ee50af4ba3"
     },
     {
       "path": "frontend-tests/mime-regression.test.mjs",
