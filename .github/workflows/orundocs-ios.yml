@@ -24,7 +24,7 @@ permissions:
   contents: read
 
 concurrency:
-  group: orundocs-ios
+  group: orundocs-ios-${{ inputs.run_tests && 'tests' || 'archive-only' }}
   cancel-in-progress: false
 
 jobs:
@@ -94,6 +94,9 @@ jobs:
             echo "SOURCE_WEB_ICON_SHA256=$(shasum -a 256 "$RUNNER_TEMP/od/public/app-icon.png" | cut -d' ' -f1)"
             echo "SOURCE_APPICON_1024_SHA256=$(shasum -a 256 "$RUNNER_TEMP/od/ios/App/App/Assets.xcassets/AppIcon.appiconset/AppIcon-512@2x.png" | cut -d' ' -f1)"
             echo "ASSETS_CAR_PRESENT=$(test -s "$APP/Assets.car" && echo yes || echo no)"
+            echo "PRIVACY_MANIFEST=$(test -f "$APP/PrivacyInfo.xcprivacy" && plutil -lint "$APP/PrivacyInfo.xcprivacy" >/dev/null && echo present-valid || echo MISSING)"
+            echo "PRIVACY_MANIFEST_SHA256=$(shasum -a 256 "$APP/PrivacyInfo.xcprivacy" 2>/dev/null | cut -d' ' -f1)"
+            echo "PRIVACY_TRACKING=$(/usr/libexec/PlistBuddy -c 'Print :NSPrivacyTracking' "$APP/PrivacyInfo.xcprivacy" 2>/dev/null)"
             ls -la "$APP" | head -40
           } | tee "$V"
           test "$(/usr/libexec/PlistBuddy -c 'Print :CFBundleIdentifier' "$P")" = "com.orundocs.app"
@@ -107,10 +110,13 @@ jobs:
           grep -q "REVIEW_PASSWORD_IN_RELEASE=absent" "$V"
           grep -q "TOKEN_PATTERN_IN_RELEASE=absent" "$V"
           grep -q "CSP_AI_PROXY=present" "$V"
+          grep -q "PRIVACY_MANIFEST=present-valid" "$V"
           python3 - "$APP/public" <<'PYEOF' | tee -a "$V"
           import sys, os
           root = sys.argv[1]
-          s = open(os.path.join(root, "auth-gate.js"), encoding="utf-8").read()
+          # esbuild code-splitting may move the gate code into chunks/*.js: scan all bundled JS
+          import glob
+          s = "".join(open(f, encoding="utf-8", errors="ignore").read() for f in [os.path.join(root, "auth-gate.js")] + sorted(glob.glob(os.path.join(root, "chunks", "*.js"))))
           lit = "\uc633\uc740\uc601\uc5b4 \uae40\uc131\uc9c4T \ubb38\uc11c \uc791\uc5c5 \uacf5\uac04"
           esc = "".join("\\u%04x" % ord(c) if ord(c) > 127 else c for c in lit)
           found = lit in s or esc.lower() in s.lower()
