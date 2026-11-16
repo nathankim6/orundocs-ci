@@ -290,14 +290,15 @@ final class OrunUITests: XCTestCase {
         app.launch()
         var chip = accountChip(app)
         var via = "persisted real sign-in session"
-        if !chip.waitForExistence(timeout: 60) {
+        let bootstrap = ProcessInfo.processInfo.environment["OD_BOOTSTRAP_TOKEN"] == "1"
+        if !chip.waitForExistence(timeout: bootstrap ? 5 : 60) {
             app.terminate()
             app = XCUIApplication()
             currentApp = app
             app.launchEnvironment["OD_TEST_RT"] = ProcessInfo.processInfo.environment["OD_TEST_RT"] ?? ""
             app.launch()
             chip = accountChip(app)
-            via = "FALLBACK token hook"
+            via = bootstrap ? "BOOTSTRAP debug token hook with a fresh review-account Firebase refresh token (no UI login in this run)" : "FALLBACK token hook"
             _ = chip.waitForExistence(timeout: 90)
         }
         record("c0-unlocked", chip.exists, "via=\(via)")
@@ -352,7 +353,24 @@ final class OrunUITests: XCTestCase {
         guard examOpen else { shot("c2-exam-missing"); dump("c2-exam-missing", app); return }
         shot("c2-exam-tool")
         let want = Int(ProcessInfo.processInfo.environment["OD_BATCH_N"] ?? "20") ?? 20
-        let (tappedN, confirmedPick) = pickPhotos(app, match: "2024", want: want)
+        var tappedN = 0, confirmedPick = false
+        let importMode = ProcessInfo.processInfo.environment["OD_IMPORT"] ?? "photos"
+        if importMode == "files" {
+            let (n, opened, notes) = pickFiles(app, folder: "exam-batch", want: want)
+            record("c3a-files-import", n == want && opened, "verifiedSelected=\(n) opened=\(opened) \(notes)")
+            tappedN = n; confirmedPick = opened
+            let pagesNow = app.buttons.matching(NSPredicate(format: "label ENDSWITH '번 페이지 열기'")).count
+            if !(n == want && opened) && pagesNow > 0 {
+                record("c3a-photos-strict-fallback", false, "not attempted: \(pagesNow) page(s) already imported by the Files picker; a fallback would mix inputs")
+            } else if !(n == want && opened) {
+                Thread.sleep(forTimeInterval: 2)
+                let (m, ok, note) = pickPhotosStrict(app, match: "2024", want: want)
+                record("c3a-photos-strict-fallback", m == want && ok, note)
+                tappedN = m; confirmedPick = ok
+            }
+        } else {
+            (tappedN, confirmedPick) = pickPhotos(app, match: "2024", want: want)
+        }
         let pages = app.buttons.matching(NSPredicate(format: "label ENDSWITH '번 페이지 열기'"))
         var loaded = 0
         let loadEnd = Date().addingTimeInterval(90)
@@ -522,6 +540,117 @@ final class OrunUITests: XCTestCase {
         return any(app, "label CONTAINS '사진 선택' AND elementType == \(btnType)").waitForExistence(timeout: 15)
     }
 
+    /// Import via the native Files (document) picker: "사진 선택" -> "Choose Files" -> On My iPad/exam-batch -> select all
+    /// `want` JPEGs -> Open. Selection is verified per cell (isSelected) before Open; on any doubt it cancels.
+    /// Returns (verified-selected count, opened, notes).
+    private func pickFiles(_ app: XCUIApplication, folder: String, want: Int) -> (Int, Bool, String) {
+        var notes: [String] = []
+        let pick = any(app, "label CONTAINS '사진 선택' AND elementType == \(btnType)")
+        tapCenter(pick)
+        guard let choose = waitAny([any(app, "label == 'Choose Files'"), any(app, "label == '파일 선택'")], timeout: 10) else {
+            shot("files-0-no-menu"); dump("files-0-no-menu", app); return (0, false, "Choose Files option not found")
+        }
+        choose.tap(); Thread.sleep(forTimeInterval: 3)
+        shot("files-1-picker"); dump("files-1-picker", app)
+        let fileCells = app.cells.matching(NSPredicate(format: "label BEGINSWITH 'batch-' AND label CONTAINS 'jpg'"))
+        let navEnd = Date().addingTimeInterval(45)
+        var path: [String] = []
+        while Date() < navEnd && fileCells.count == 0 {
+            let folderCell = app.cells.matching(NSPredicate(format: "label BEGINSWITH %@", folder)).firstMatch
+            if folderCell.exists && folderCell.isHittable { folderCell.tap(); path.append("folder"); Thread.sleep(forTimeInterval: 2.5); continue }
+            let loc = [any(app, "label == 'On My iPad' AND elementType != \(XCUIElement.ElementType.navigationBar.rawValue) AND elementType != \(XCUIElement.ElementType.staticText.rawValue)"),
+                       any(app, "label == 'On My iPhone' AND elementType != \(XCUIElement.ElementType.navigationBar.rawValue) AND elementType != \(XCUIElement.ElementType.staticText.rawValue)"),
+                       any(app, "label == 'On My iPad'"), any(app, "label == 'On My iPhone'")].first(where: { $0.exists && $0.isHittable })
+            if let l = loc, !path.contains("location") { l.tap(); path.append("location"); Thread.sleep(forTimeInterval: 2.5); continue }
+            if app.buttons["Browse"].exists && app.buttons["Browse"].isHittable && !path.contains("browse") { app.buttons["Browse"].tap(); path.append("browse"); Thread.sleep(forTimeInterval: 2.5); continue }
+            Thread.sleep(forTimeInterval: 1)
+        }
+        notes.append("nav=" + path.joined(separator: ">"))
+        shot("files-2-folder"); dump("files-2-folder", app)
+        guard fileCells.count > 0 else { cancelPicker(app); return (0, false, notes.joined(separator: " ") + " fixture files not visible") }
+        // selection mode: some layouts need an explicit "Select" first
+        if app.buttons["Select"].exists && app.buttons["Select"].isHittable { app.buttons["Select"].tap(); notes.append("Select-button"); Thread.sleep(forTimeInterval: 1.5) }
+        else if let more = [app.buttons["More"], app.buttons["OverflowBarButtonItem"]].first(where: { $0.exists && $0.isHittable }) {
+            more.tap(); Thread.sleep(forTimeInterval: 1.5); dump("files-2b-more-menu", app)
+            let sel = any(app, "label == 'Select' AND (elementType == \(btnType) OR elementType == \(XCUIElement.ElementType.menuItem.rawValue) OR elementType == \(XCUIElement.ElementType.cell.rawValue))")
+            if sel.exists && sel.isHittable { sel.tap(); notes.append("More>Select"); Thread.sleep(forTimeInterval: 1.5) }
+            else { notes.append("no Select in More menu"); app.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.05)).tap(); Thread.sleep(forTimeInterval: 1) }
+        } else { notes.append("no Select control (assuming multi-select mode)") }
+        shot("files-2c-select-mode"); dump("files-2c-select-mode", app)
+        var selected = Set<String>()
+        var idle = 0
+        for _ in 0..<8 {
+            var progressed = false
+            let n = fileCells.count
+            for i in 0..<n where selected.count < want {
+                let c = fileCells.element(boundBy: i)
+                guard c.exists, c.isHittable else { continue }
+                let l = c.label
+                if selected.contains(l) { continue }
+                if c.isSelected { selected.insert(l); progressed = true; continue }
+                for _ in 0..<2 {
+                    c.tap()
+                    let e = Date().addingTimeInterval(2)
+                    while Date() < e && !c.isSelected { Thread.sleep(forTimeInterval: 0.25) }
+                    if c.isSelected { break }
+                }
+                if c.isSelected { selected.insert(l); progressed = true }
+                // a single-selection picker would close (or open the file) on the first tap: stop and report
+                if !fileCells.firstMatch.exists { notes.append("picker closed after tap (single selection?)"); return (selected.count, true, notes.joined(separator: " ")) }
+            }
+            if selected.count >= want { break }
+            idle = progressed ? 0 : idle + 1
+            if idle >= 2 { break }
+            let cv = app.collectionViews.firstMatch
+            if cv.exists { cv.swipeUp(velocity: .slow) } else { app.swipeUp(velocity: .slow) }
+            Thread.sleep(forTimeInterval: 1.2)
+        }
+        shot("files-3-selected"); dump("files-3-selected", app)
+        let summary = any(app, "label CONTAINS 'Selected' OR label CONTAINS '선택됨'")
+        notes.append("verifiedSelectedCells=\(selected.count) selectionLabel=\(summary.exists ? summary.label : "n/a")")
+        guard selected.count == want else { notes.append("not all selected -> cancelled, not opened"); cancelPicker(app); return (selected.count, false, notes.joined(separator: " ")) }
+        let open = [app.buttons["Open"], app.buttons["열기"], app.navigationBars.buttons["Open"]].first(where: { $0.exists })
+        guard let o = open, o.isEnabled else { notes.append("Open button missing/disabled"); cancelPicker(app); return (selected.count, false, notes.joined(separator: " ")) }
+        o.tap(); notes.append("Open")
+        return (selected.count, true, notes.joined(separator: " "))
+    }
+
+    private func cancelPicker(_ app: XCUIApplication) {
+        for b in [app.buttons["Cancel"], app.buttons["Close"], app.buttons["취소"]] where b.exists && b.isHittable { b.tap(); Thread.sleep(forTimeInterval: 2); return }
+    }
+
+    /// Strict PHPicker fallback: upper-right tile taps (the iPad 'Sort and Filter' button overlaps the lower-left of the
+    /// bottom-left tile, run 43828012879) and confirm only when every wanted tile reports Selected and the counter equals want.
+    private func pickPhotosStrict(_ app: XCUIApplication, match: String, want: Int) -> (Int, Bool, String) {
+        let pick = any(app, "label CONTAINS '사진 선택' AND elementType == \(btnType)")
+        tapCenter(pick)
+        if let lib = waitAny([any(app, "label == 'Photo Library'"), any(app, "label == 'Photos'")], timeout: 10) { lib.tap() }
+        let tiles = app.images.matching(NSPredicate(format: "label BEGINSWITH 'Photo, ' AND label CONTAINS %@", match))
+        let end = Date().addingTimeInterval(60)
+        repeat { Thread.sleep(forTimeInterval: 2) } while tiles.count == 0 && Date() < end
+        Thread.sleep(forTimeInterval: 3)
+        for round in 0..<3 {
+            for i in 0..<tiles.count {
+                let t = tiles.element(boundBy: i)
+                guard t.exists, !t.isSelected else { continue }
+                t.coordinate(withNormalizedOffset: CGVector(dx: 0.72, dy: 0.22)).tap()
+                let e = Date().addingTimeInterval(2.5)
+                while Date() < e && !t.isSelected { Thread.sleep(forTimeInterval: 0.25) }
+            }
+            let sel = (0..<tiles.count).filter { tiles.element(boundBy: $0).isSelected }.count
+            if sel >= want { break }
+            print("ODNOTE: strict photo round \(round + 1): selected=\(sel)")
+        }
+        let sel = (0..<tiles.count).filter { tiles.element(boundBy: $0).isSelected }.count
+        let counter = pickerCount(app) ?? -1
+        shot("photos-strict-selected"); dump("photos-strict-selected", app)
+        let note = "tilesMatching=\(tiles.count) selectedTiles=\(sel) pickerCounter=\(counter)"
+        guard sel == want && counter == want else { cancelPicker(app); for b in [app.buttons["Close"], app.buttons["Cancel"]] where b.exists { b.tap(); break }; return (sel, false, note + " -> cancelled, not confirmed") }
+        let done = [app.buttons["Done"], app.buttons["Add"]].first(where: { $0.exists && $0.isEnabled })
+        done?.tap()
+        return (sel, done != nil, note + " confirm=" + (done?.label ?? "none"))
+    }
+
     /// Selected-count shown by the system photo picker ("18 Photos, Locations Included" pill seen in run 43821174005).
     private func pickerCount(_ app: XCUIApplication) -> Int? {
         let q = app.descendants(matching: .any).matching(NSPredicate(format: "label MATCHES %@", "^[0-9]+ Photos?([ ,].*)?$"))
@@ -566,10 +695,13 @@ final class OrunUITests: XCTestCase {
                 }
                 var registered = false
                 for attempt in 0..<2 {
-                    t.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.5)).tap()
+                    // run 43828012879: iPad 'Sort and Filter' button {433,958,36,36} overlaps the lower-left of the
+                    // bottom-left tile, so tap the tile's upper-right area instead of its centre
+                    t.coordinate(withNormalizedOffset: CGVector(dx: 0.7, dy: 0.25)).tap()
                     let wEnd = Date().addingTimeInterval(3)
                     while Date() < wEnd {
                         if let c = pickerCount(app) { counterSeen = true; if c > count { count = c; registered = true; break } }
+                        if t.isSelected && pickerCount(app) == nil { registered = true; count += 1; break }
                         Thread.sleep(forTimeInterval: 0.3)
                     }
                     if registered { break }
