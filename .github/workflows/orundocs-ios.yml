@@ -19,6 +19,10 @@ on:
         description: "Targeted re-test: only test2 (real sign-in) + test3 (local 20-photo batch, save, share, split); no GPT"
         type: boolean
         default: false
+      ipad_files_import:
+        description: "iPad only: test3 with 20 JPEGs imported through the native Files picker (token bootstrap, no UI login)"
+        type: boolean
+        default: false
       review_video:
         description: "Record the App Review screen recording (iPhone only, replaces the normal suite)"
         type: boolean
@@ -341,10 +345,11 @@ jobs:
             if [ "$name" = "iphone" ] && [ "${{ inputs.targeted }}" != "true" ]; then export TEST_RUNNER_OD_GPT=1; else unset TEST_RUNNER_OD_GPT; fi
             ONLY=""
             if [ "${{ inputs.targeted }}" = "true" ]; then ONLY="-only-testing:AppUITests/OrunUITests/test2_RealSignIn -only-testing:AppUITests/OrunUITests/test3_ExamFilesMenu"; fi
+            if [ "${{ inputs.ipad_files_import }}" = "true" ]; then ONLY="-only-testing:AppUITests/OrunUITests/test3_ExamFilesMenu"; export TEST_RUNNER_OD_IMPORT=files TEST_RUNNER_OD_BOOTSTRAP_TOKEN=1; unset TEST_RUNNER_OD_GPT; else unset TEST_RUNNER_OD_IMPORT TEST_RUNNER_OD_BOOTSTRAP_TOKEN; fi
             export TEST_RUNNER_OD_BATCH_N=20
             xcrun simctl status_bar "$udid" override --time 9:41 --dataNetwork wifi --wifiMode active --wifiBars 3 --cellularMode active --cellularBars 4 --batteryState charged --batteryLevel 100 || echo "status_bar override failed"
             G=$(xcrun simctl get_app_container "$udid" com.apple.DocumentsApp groups 2>/dev/null | grep -i LocalStorage | sed 's#^[^/]*##')
-            if [ -n "$G" ]; then mkdir -p "$G/File Provider Storage" && cp "$GITHUB_WORKSPACE/ios-ci/fixtures/preview-six-pages.pdf" "$G/File Provider Storage/" && echo "PDF fixture placed in On My device storage"; ls -la "$G/File Provider Storage"; else echo "Files local storage container not found"; xcrun simctl get_app_container "$udid" com.apple.DocumentsApp groups || true; fi
+            if [ -n "$G" ]; then mkdir -p "$G/File Provider Storage/exam-batch" && cp "$GITHUB_WORKSPACE/ios-ci/fixtures/preview-six-pages.pdf" "$G/File Provider Storage/" && cp "$GITHUB_WORKSPACE"/ios-ci/fixtures/batch/*.jpg "$G/File Provider Storage/exam-batch/" && echo "PDF + 20 JPEG fixtures placed in On My device storage (exam-batch/: $(ls "$G/File Provider Storage/exam-batch" | wc -l) files)"; ls -la "$G/File Provider Storage"; else echo "Files local storage container not found"; xcrun simctl get_app_container "$udid" com.apple.DocumentsApp groups || true; fi
             xcrun simctl uninstall "$udid" com.orundocs.app || true
             TEST_RUNNER_OD_SHOTS="$RUNNER_TEMP/out/shots/$name" xcodebuild test-without-building -project App.xcodeproj -scheme AppUITests \
               -destination "id=$udid" -derivedDataPath "$RUNNER_TEMP/dd" -resultBundlePath "$RUNNER_TEMP/xcresult-$name" $ONLY \
@@ -367,8 +372,8 @@ jobs:
             cat "$RUNNER_TEMP/out/saved-pdf-$name.log"
             xcrun simctl shutdown "$udid" || true
           }
-          run_dev iphone "${{ steps.sims.outputs.iphone }}"
-          if [ "${{ inputs.ipad }}" = "true" ]; then run_dev ipad "${{ steps.sims.outputs.ipad }}"; else echo "iPad skipped (input ipad=false)"; fi
+          if [ "${{ inputs.ipad_files_import }}" = "true" ]; then echo "iPhone skipped (ipad_files_import)"; else run_dev iphone "${{ steps.sims.outputs.iphone }}"; fi
+          if [ "${{ inputs.ipad }}" = "true" ] || [ "${{ inputs.ipad_files_import }}" = "true" ]; then run_dev ipad "${{ steps.sims.outputs.ipad }}"; else echo "iPad skipped (input ipad=false)"; fi
           cat "$RUNNER_TEMP"/out/shots/*/results-*.txt || true
       - name: Redact secret from evidence files
         if: always()
