@@ -1,10 +1,10 @@
 {
   "app": "OrunDocs",
-  "version": "4.0.0",
-  "versionCode": 4000004,
+  "version": "4.1.0",
+  "versionCode": 4010001,
   "package": "com.orundocs.app",
-  "sourceSha256": "5535299cbd305dbb414f5cbedf9f6ba7328e1823d6719c1f7e70b97eddaa2050",
-  "sourceBytes": 9600989,
+  "sourceSha256": "1cc92ebdc58f123d0c832e879b75d2736cd39c7e8d5108d2325635efdca94640",
+  "sourceBytes": 9782846,
   "files": [
     {
       "path": "LICENSE",
@@ -34,7 +34,7 @@
     {
       "path": "android/app/build.gradle",
       "bytes": 2380,
-      "sha256": "b034944ca5b644b4fd952238853c206bd9509c43b125f288b91cdf2dcd19d2f4"
+      "sha256": "cc3abc85e553f44ce558ab3cf95bcc96c6b572be8e9acb2cc9a62da111f6b92f"
     },
     {
       "path": "android/app/capacitor.build.gradle",
@@ -63,8 +63,8 @@
     },
     {
       "path": "android/app/src/androidTest/java/com/pdfatelier/android/NativeWebViewSmokeTest.java",
-      "bytes": 26855,
-      "sha256": "d9a3f691553fe166d67559eede27ba2bf195e07e2730d7b910bac2d3d933727a"
+      "bytes": 26911,
+      "sha256": "13ad2f340d145d47a63978df87d92b53175d59fccd45800fb471994f5aa461a4"
     },
     {
       "path": "android/app/src/main/AndroidManifest.xml",
@@ -123,103 +123,103 @@
     },
     {
       "path": "android/app/src/main/res/mipmap-hdpi/ic_launcher.png",
-      "bytes": 9397,
-      "sha256": "cd306146dbb6423f452bbb41ff098536eb8b80380d2afb864bfed476cd8f44ae"
+      "bytes": 5856,
+      "sha256": "9ab6a8103be0a018527325e28a6523b82890441a1d8bb098b10ce555eccc6fe5"
     },
     {
       "path": "android/app/src/main/res/mipmap-hdpi/ic_launcher_background.png",
-      "bytes": 38964,
-      "sha256": "7253080bcde1b3704418ec7ed299afea2fdd8b33843325ee378a0958fc94c9db"
+      "bytes": 470,
+      "sha256": "c241742df56509012133dd85af1d1aaf612c04d71c23de10c9ce65a517cd3e14"
     },
     {
       "path": "android/app/src/main/res/mipmap-hdpi/ic_launcher_foreground.png",
-      "bytes": 182,
-      "sha256": "e2fcb189d59b96c2ddf1a8cdf95c82557a8528fff7178593ae637b0efbac0b82"
+      "bytes": 14106,
+      "sha256": "a72a14bd2fa290e6e509be083d0876afe2fc731ea38d2afc9a7ec352a5a62fe8"
     },
     {
       "path": "android/app/src/main/res/mipmap-hdpi/ic_launcher_round.png",
-      "bytes": 9135,
-      "sha256": "ff05df514a6c37d90d2b70f677e417ec411ee4239b0ab0d6a4582672c6e513dd"
+      "bytes": 5856,
+      "sha256": "9ab6a8103be0a018527325e28a6523b82890441a1d8bb098b10ce555eccc6fe5"
     },
     {
       "path": "android/app/src/main/res/mipmap-mdpi/ic_launcher.png",
-      "bytes": 4664,
-      "sha256": "9214f43da528ba6f348aaa3caf373a849a051c0fab79990092361b442ac7e6cc"
+      "bytes": 2819,
+      "sha256": "c2fcb090052f7c36f62013a8dbd30d23cd23bd20254c8224d46e8888b3873f04"
     },
     {
       "path": "android/app/src/main/res/mipmap-mdpi/ic_launcher_background.png",
-      "bytes": 19892,
-      "sha256": "b3b7d55c4ca22df97be6c566e9373cee0f6ac1c7b40f2f9f1f49df6c83e03ad8"
+      "bytes": 301,
+      "sha256": "56bd297b0ed72af8c7204883b5242ec122707380caaf75132bf3dd5773e0e6a9"
     },
     {
       "path": "android/app/src/main/res/mipmap-mdpi/ic_launcher_foreground.png",
-      "bytes": 125,
-      "sha256": "f491ca4481a62ed4777841e0cb28c2f33149aac2f0f212b34eaef5c2d430a6e1"
+      "bytes": 7257,
+      "sha256": "cdfb239117d50963a7809ef22f8c0f800e368bac643c65b067a19e0f1b44c7ad"
     },
     {
       "path": "android/app/src/main/res/mipmap-mdpi/ic_launcher_round.png",
-      "bytes": 4820,
-      "sha256": "05eeaf3a0d27c09c46fea24032469383e407fde1f90bba57eeebd7451054c1a0"
+      "bytes": 2819,
+      "sha256": "c2fcb090052f7c36f62013a8dbd30d23cd23bd20254c8224d46e8888b3873f04"
     },
     {
       "path": "android/app/src/main/res/mipmap-xhdpi/ic_launcher.png",
-      "bytes": 15202,
-      "sha256": "7bfcca57f9a20210f61919f06c7be663d94bae2b07ccffe58217b58bd97cd4cd"
+      "bytes": 8090,
+      "sha256": "f47cb9a6c11bced16e3f2b6c4c16e11b69f347486f36c042775a5c1202735730"
     },
     {
       "path": "android/app/src/main/res/mipmap-xhdpi/ic_launcher_background.png",
-      "bytes": 62302,
-      "sha256": "2087975e8b7a2476b9a8e19560c07d44ce58e42c82065346b64b4aabd5f946a3"
+      "bytes": 625,
+      "sha256": "9c0b6d047b8dabcb987b06d681d3447a47ca04932a1a1752f5ac1f91fb317a82"
     },
     {
       "path": "android/app/src/main/res/mipmap-xhdpi/ic_launcher_foreground.png",
-      "bytes": 261,
-      "sha256": "9b343ffc2f819fa7fc3169317ae3f6be9198257d03b23d420d753d30d7f242be"
+      "bytes": 23294,
+      "sha256": "a7084176a27bbf3100c61a861e84a686a8dcfb70e3beb6849524307d953a5f05"
     },
     {
       "path": "android/app/src/main/res/mipmap-xhdpi/ic_launcher_round.png",
-      "bytes": 14888,
-      "sha256": "70c1d04b0fea01974a0a0fd3e3b4123bee458f1a44a42d2174215c94fbef0639"
+      "bytes": 8090,
+      "sha256": "f47cb9a6c11bced16e3f2b6c4c16e11b69f347486f36c042775a5c1202735730"
     },
     {
       "path": "android/app/src/main/res/mipmap-xxhdpi/ic_launcher.png",
-      "bytes": 31817,
-      "sha256": "b953dc4a58096af579a05309f3fd5df76f2889e6b4efd129a71eff6df322dcce"
+      "bytes": 18536,
+      "sha256": "cb568afb5f1883ae90e3c4fed5aadc842282ccbc99cfec5cf4c4c8ab78643f79"
     },
     {
       "path": "android/app/src/main/res/mipmap-xxhdpi/ic_launcher_background.png",
-      "bytes": 125612,
-      "sha256": "a4d541bee367c99ca5f0d455bfe6cd8a2cca6f8c6d646f13f37b8d7eea3cbafb"
+      "bytes": 894,
+      "sha256": "05ec18980f34abfe2f129ad212049efb43082c88deb5fa15297080e50c9b917a"
     },
     {
       "path": "android/app/src/main/res/mipmap-xxhdpi/ic_launcher_foreground.png",
-      "bytes": 486,
-      "sha256": "180ffb7da4a2e21b1f475241b28ed6fe70ddfcf8d5c57aa71de44a4bdffbae0a"
+      "bytes": 51387,
+      "sha256": "1522a162be17ebb31bed01e5379d7e9beeab5d2d3d8d204efe5cf863e6e39264"
     },
     {
       "path": "android/app/src/main/res/mipmap-xxhdpi/ic_launcher_round.png",
-      "bytes": 29339,
-      "sha256": "23c9982a35f41339617e75646c227bd1e485ce07a9b03d0c677843f3ecf20c03"
+      "bytes": 18536,
+      "sha256": "cb568afb5f1883ae90e3c4fed5aadc842282ccbc99cfec5cf4c4c8ab78643f79"
     },
     {
       "path": "android/app/src/main/res/mipmap-xxxhdpi/ic_launcher.png",
-      "bytes": 52069,
-      "sha256": "65caea2e3d0191fc176fc6592ae54dd6822e94f89965d8006d4dab9b025729d5"
+      "bytes": 29724,
+      "sha256": "faac86168951020ac09150ca07f18cae399a478b108cd8f7c9866b3596c01296"
     },
     {
       "path": "android/app/src/main/res/mipmap-xxxhdpi/ic_launcher_background.png",
-      "bytes": 201860,
-      "sha256": "9c3083fc6a1a34a8f0d85af5c6ddcf17986083a4dc7b36df2617f60401be3bc5"
+      "bytes": 1542,
+      "sha256": "4c30c964d47c2ed4d2652b374d14e6a32b5f414f38205eb8cf4a721b48f10443"
     },
     {
       "path": "android/app/src/main/res/mipmap-xxxhdpi/ic_launcher_foreground.png",
-      "bytes": 803,
-      "sha256": "788ea0b51a4f518d54c5df8be671f50a8840c8840658c9eb0f736c6771c130a4"
+      "bytes": 92964,
+      "sha256": "ad47326cee7fac095c48b6251dfe47fbf7618a4439ef43f7f80b1cc5e40102e4"
     },
     {
       "path": "android/app/src/main/res/mipmap-xxxhdpi/ic_launcher_round.png",
-      "bytes": 47877,
-      "sha256": "151b9e09967b26d8736b27d3f4840a4d7550adfb8bd5cc3be8ab31eed6cda945"
+      "bytes": 29724,
+      "sha256": "faac86168951020ac09150ca07f18cae399a478b108cd8f7c9866b3596c01296"
     },
     {
       "path": "android/app/src/main/res/values/ic_launcher_background.xml",
@@ -363,8 +363,18 @@
     },
     {
       "path": "frontend-tests/build-meta.json",
-      "bytes": 175880,
-      "sha256": "75b0e077a82d850eb2474b5146e349ab747a53a91a6cf1e398d84365d1c71439"
+      "bytes": 177075,
+      "sha256": "d00d40cc49481899bfa55259a43147d35a8c533566af0c0256a5ce5c2c61a4c3"
+    },
+    {
+      "path": "frontend-tests/exam-ai.test.mjs",
+      "bytes": 7063,
+      "sha256": "23d361edb1cffee69e32cf061b322428e65deb37872a5baa2db506a26b7f29f6"
+    },
+    {
+      "path": "frontend-tests/exam-batch.test.mjs",
+      "bytes": 4524,
+      "sha256": "f21c144cbfa64a10396efe9301ee41fc78d6b48f8dad6187c61c5a090c237c5f"
     },
     {
       "path": "frontend-tests/exam-scan.test.mjs",
@@ -399,12 +409,12 @@
     {
       "path": "package-lock.json",
       "bytes": 154602,
-      "sha256": "f34c9a7621d5809851900171ab2df971affa2c0882034b454f20a4b34a8033b3"
+      "sha256": "e86d7da2ee2e741b269ff235c5b7c17224aea8a4b1310087659d9fc1a08c75c1"
     },
     {
       "path": "package.json",
       "bytes": 772,
-      "sha256": "f33de751a20fe94bd49ca1372b87c60409bf5735675f2b3b431d17228b278fce"
+      "sha256": "fcdade4c36183846e578476148a055ca6ed67e7a40dd2cd05ccfd8034c53d60a"
     },
     {
       "path": "public/android.css",
@@ -413,8 +423,8 @@
     },
     {
       "path": "public/app-icon.png",
-      "bytes": 88160,
-      "sha256": "e702f7970d7dca43a05005139c00e947268dfa6ef7704b826e91bed87ee07218"
+      "bytes": 653982,
+      "sha256": "d636987efac1ffbfa0e25fd30c3640aa6f5bc6e5bb2a13937aba49e9f355643b"
     },
     {
       "path": "public/app.js",
@@ -428,13 +438,13 @@
     },
     {
       "path": "public/exam-scan.css",
-      "bytes": 5710,
-      "sha256": "fbc2bd5a76a9f2752c0674268d1f29e9d10346b29ccb40c12f0c6152f2e769fc"
+      "bytes": 6540,
+      "sha256": "21f57411b15b6163d847d2864670b1649dbb9c255b7e7a5bffca2fc7651068ec"
     },
     {
       "path": "public/index.html",
-      "bytes": 6513,
-      "sha256": "43614527fede417169a7fe83f4cd0f0afd55918ed0ac392a3010be0b3eff6536"
+      "bytes": 6553,
+      "sha256": "c6d6272228e3c853ebfece6e3ae401ac3b04bfa4bd552b3069055fec8576a45a"
     },
     {
       "path": "public/open-source-notices.txt",
@@ -1533,13 +1543,23 @@
     },
     {
       "path": "src/auth/auth-gate.js",
-      "bytes": 9996,
-      "sha256": "5228bf8717f8042cac539238b8a957886a6dbf9764f514f2f89b427c6ab551a2"
+      "bytes": 10873,
+      "sha256": "97ffefff4728d26eb51d89eac0383df13d6af9cbcaea56587d81074f6aaddfd7"
     },
     {
       "path": "src/auth/orundocs-auth-core.mjs",
-      "bytes": 7734,
-      "sha256": "ef74cbe91f7b0bd38cce6f6934fed739072dfae8eb35e4a6b4940e591a6af26c"
+      "bytes": 7811,
+      "sha256": "c5834c03504343977d0e05a1e9dd6752a9e6cb358db9d6d6647a9fc1bfe9b32d"
+    },
+    {
+      "path": "src/exam-ai-client.mjs",
+      "bytes": 8798,
+      "sha256": "2822b13520279fb4ad714ad9e3b9967845bd5fe71e934ccca1837141d9363833"
+    },
+    {
+      "path": "src/exam-batch.mjs",
+      "bytes": 3994,
+      "sha256": "bacdbacba3e0e2a62304d23e625ec919fc910cc2575c53796b02abf268e8030c"
     },
     {
       "path": "src/exam-scan-core.mjs",
@@ -1553,8 +1573,8 @@
     },
     {
       "path": "src/exam-scan-ui.js",
-      "bytes": 27449,
-      "sha256": "55fb17d71f555b70400092e0b3db4d1ee646f0377f3d5279f66c44289708e0ac"
+      "bytes": 38253,
+      "sha256": "b4b56aedd87b979b85c6615c13f5ac94b03cb3ddcc8a8303958609798c295edf"
     },
     {
       "path": "src/exam-scan-worker.js",
@@ -1653,8 +1673,8 @@
     },
     {
       "path": "src/toolkit.js",
-      "bytes": 36768,
-      "sha256": "b53f7fdfde9ce49e13c9e716fab201af58bbf60b5237a4c24c4c9ad9667a1e09"
+      "bytes": 37107,
+      "sha256": "538e3f77629425d82df572998f351c691364d3be5103e2a8f3b47159ae860c67"
     }
   ]
 }
