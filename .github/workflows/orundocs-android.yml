@@ -20,7 +20,7 @@ concurrency:
   cancel-in-progress: false
 
 env:
-  SOURCE_SHA256: 5535299cbd305dbb414f5cbedf9f6ba7328e1823d6719c1f7e70b97eddaa2050
+  SOURCE_SHA256: 1cc92ebdc58f123d0c832e879b75d2736cd39c7e8d5108d2325635efdca94640
 
 defaults:
   run:
@@ -87,7 +87,7 @@ jobs:
           grep -q 'exceljs@4.4.0' ci-output/build/open-source-notices.txt
           grep -q 'Permission is hereby granted' ci-output/build/open-source-notices.txt
           "$ANDROID_HOME/build-tools/36.0.0/aapt2" dump badging ci-output/build/app-release-unsigned.apk > ci-output/build/release-badging.txt
-          grep -q "package: name='com.orundocs.app'.*versionCode='4000004'.*versionName='4.0.0'" ci-output/build/release-badging.txt
+          grep -q "package: name='com.orundocs.app'.*versionCode='4010001'.*versionName='4.1.0'" ci-output/build/release-badging.txt
           if grep -q '^application-debuggable' ci-output/build/release-badging.txt; then echo 'Release is debuggable'; exit 1; fi
           sha256sum ci-output/build/*.apk > ci-output/build/SHA256SUMS
           test "$(du -sm ci-output/build | cut -f1)" -lt 80
@@ -135,7 +135,7 @@ jobs:
           "$ANDROID_HOME/build-tools/36.0.0/apksigner" verify --verbose --print-certs app-release-androidTest.apk > test-signature.txt
           diff <(grep 'certificate SHA-256 digest:' app-signature.txt) <(grep 'certificate SHA-256 digest:' test-signature.txt)
           "$ANDROID_HOME/build-tools/36.0.0/aapt2" dump badging app-release.apk > release-badging.txt
-          grep -q "package: name='com.orundocs.app'.*versionCode='4000004'.*versionName='4.0.0'" release-badging.txt
+          grep -q "package: name='com.orundocs.app'.*versionCode='4010001'.*versionName='4.1.0'" release-badging.txt
           if grep -q '^application-debuggable' release-badging.txt; then echo 'Release is debuggable'; exit 1; fi
       - name: Start clean standard Android emulator
         shell: bash
@@ -209,6 +209,10 @@ jobs:
           timeout 10 adb shell dumpsys webviewupdate > ci-output/webview-provider.txt || true
           cp app-signature.txt test-signature.txt release-badging.txt signed-manifest.json ci-output/ 2>/dev/null || true
           if [ "$(du -sm ci-output | cut -f1)" -ge 100 ]; then echo 'Evidence exceeds free-storage guard'; exit 1; fi
+          node - <<'SANITIZE'
+          const fs=require('fs'),path=require('path');
+          function walk(d){for(const e of fs.readdirSync(d,{withFileTypes:true})){const p=path.join(d,e.name);if(e.isDirectory())walk(p);else if(/\.(txt|log|json|xml)$/.test(p)){let s=fs.readFileSync(p,'utf8');s=s.replace(/eyJ[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+/g,'[REDACTED-JWT]').replace(/(rt=)[^&\s]+/g,'$1[REDACTED]');for(const v of [process.env.OD_REVIEW_PASSWORD,process.env.OD_REVIEW_EMAIL])if(v)s=s.split(v).join('[REDACTED]');fs.writeFileSync(p,s);}}}walk('ci-output');
+          SANITIZE
           echo 'safe=true' >> "$GITHUB_OUTPUT"
       - name: Require actual native success marker
         run: |
