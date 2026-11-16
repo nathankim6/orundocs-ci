@@ -449,18 +449,20 @@ final class OrunUITests: XCTestCase {
         let navEnd = Date().addingTimeInterval(60)
         while Date() < navEnd && !fileTapped {
             let batchCell = app.cells.matching(NSPredicate(format: "label CONTAINS '필기제거'")).firstMatch
-            let sixCell = app.cells.matching(NSPredicate(format: "label CONTAINS 'preview-six-pages'")).firstMatch
-            if batchCell.exists || sixCell.exists {
+            if batchCell.exists {
                 Thread.sleep(forTimeInterval: 3)
-                for (name, cell) in [("batch-pdf", batchCell), ("six-page-fixture", sixCell)] where cell.exists {
-                    for attempt in 0..<2 {
-                        if cell.exists { cell.tap() }
-                        Thread.sleep(forTimeInterval: 2.5)
-                        if app.buttons["Open"].exists && app.buttons["Open"].isEnabled { app.buttons["Open"].tap(); Thread.sleep(forTimeInterval: 1.5) }
-                        if !batchCell.exists && !sixCell.exists { fileTapped = true; pickedName = name; break }
-                        print("ODNOTE: picker still open after \(name) tap \(attempt + 1)")
-                    }
-                    if fileTapped { break }
+                dump("e1-picker-files", app)
+                let acts: [(String, () -> Void)] = [
+                    ("tap", { batchCell.tap() }),
+                    ("tap-after-wait", { Thread.sleep(forTimeInterval: 3); if batchCell.exists { batchCell.tap() } }),
+                    ("thumbnail", { batchCell.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.3)).tap() }),
+                    ("doubleTap", { batchCell.doubleTap() }),
+                ]
+                for (name, act) in acts {
+                    act(); Thread.sleep(forTimeInterval: 2.5)
+                    if app.buttons["Open"].exists && app.buttons["Open"].isEnabled { app.buttons["Open"].tap(); Thread.sleep(forTimeInterval: 1.5) }
+                    if !batchCell.exists { fileTapped = true; pickedName = "batch-pdf via " + name; break }
+                    print("ODNOTE: picker still open after batch-pdf \(name)")
                 }
                 if !fileTapped {
                     shot("e1-picker-stuck")
@@ -497,9 +499,9 @@ final class OrunUITests: XCTestCase {
         let countLabel = any(app, "label CONTAINS '페이지' AND (label CONTAINS '/ ' OR label BEGINSWITH '\(loaded)페이지')")
         let totalEl = app.staticTexts.matching(NSPredicate(format: "label BEGINSWITH '/ '")).firstMatch
         let totalTxt = totalEl.exists ? totalEl.label : (countLabel.exists ? countLabel.label : "n/a")
-        let pdfPagesOk = pickedName == "batch-pdf" && (totalTxt.contains("/ \(loaded)") || totalTxt.contains("\(loaded)페이지"))
+        let pdfPagesOk = pickedName.hasPrefix("batch-pdf") && (totalTxt.contains("/ \(loaded)") || totalTxt.contains("\(loaded)페이지"))
         record("e-split-preview", fileTapped && previewOk, "file=\(pickedName) previewControls=\(previewOk) pageCount=\(totalTxt)")
-        record("e2-batch-pdf-pages", pdfPagesOk, "expected \(loaded) pages in saved PDF; seen=\(totalTxt) file=\(pickedName)")
+        record("e2-batch-pdf-pages-in-app-preview", pdfPagesOk, "expected \(loaded) pages in saved PDF; preview shows=\(totalTxt) file=\(pickedName) (authoritative count: host pdf-lib readback of the Files output)")
     }
 
     // MARK: 4.1.0 helpers
@@ -520,7 +522,19 @@ final class OrunUITests: XCTestCase {
         return any(app, "label CONTAINS '사진 선택' AND elementType == \(btnType)").waitForExistence(timeout: 15)
     }
 
-    /// Multi-select PHPicker tiles whose label contains `match`; returns (distinct tiles tapped, Add/Done confirmed).
+    /// Selected-count shown by the system photo picker ("18 Photos, Locations Included" pill seen in run 43821174005).
+    private func pickerCount(_ app: XCUIApplication) -> Int? {
+        let q = app.descendants(matching: .any).matching(NSPredicate(format: "label MATCHES %@", "^[0-9]+ Photos?([ ,].*)?$"))
+        let rx = try! NSRegularExpression(pattern: "^([0-9]+) Photo")
+        for i in 0..<min(q.count, 6) {
+            let l = q.element(boundBy: i).label
+            if let m = rx.firstMatch(in: l, range: NSRange(l.startIndex..., in: l)), let r = Range(m.range(at: 1), in: l) { return Int(l[r]) }
+        }
+        return nil
+    }
+
+    /// Multi-select PHPicker tiles whose label contains `match`. Every tap is verified against the picker's own
+    /// selected-count; a tap that did not register is repeated once. Returns (picker-reported count, confirm tapped).
     private func pickPhotos(_ app: XCUIApplication, match: String, want: Int) -> (Int, Bool) {
         let pick = any(app, "label CONTAINS '사진 선택' AND elementType == \(btnType)")
         tapCenter(pick)
@@ -530,37 +544,79 @@ final class OrunUITests: XCTestCase {
         repeat { Thread.sleep(forTimeInterval: 2) } while all.count == 0 && Date() < end
         Thread.sleep(forTimeInterval: 3)
         shot("pick-grid-\(want)")
+        dump("pick-grid-\(want)", app)
         let tiles = app.images.matching(NSPredicate(format: "label BEGINSWITH 'Photo, ' AND label CONTAINS %@", match))
-        var tapped = Set<String>()
+        var done = Set<String>()
+        var count = pickerCount(app) ?? 0
+        var counterSeen = false, retried = 0, missed = 0, noCounter = false
         let win = app.windows.firstMatch.frame
         var idle = 0
-        for _ in 0..<12 {
+        for _ in 0..<14 {
             var progressed = false
-            let n = tiles.count
-            for i in 0..<n where tapped.count < want {
+            for i in 0..<tiles.count where count < want {
                 let t = tiles.element(boundBy: i)
                 guard t.exists else { continue }
                 let l = t.label, f = t.frame
-                if tapped.contains(l) || f.isEmpty { continue }
+                if done.contains(l) || f.isEmpty { continue }
                 if f.minY < win.minY + 120 || f.maxY > win.maxY - 110 { continue }
-                t.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.5)).tap()
-                tapped.insert(l); progressed = true
-                Thread.sleep(forTimeInterval: 0.7)
+                if noCounter {
+                    // picker exposes no selected-count element: single tap; pages loaded in the app are the authoritative check
+                    t.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.5)).tap(); Thread.sleep(forTimeInterval: 0.8)
+                    count += 1; done.insert(l); progressed = true; continue
+                }
+                var registered = false
+                for attempt in 0..<2 {
+                    t.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.5)).tap()
+                    let wEnd = Date().addingTimeInterval(3)
+                    while Date() < wEnd {
+                        if let c = pickerCount(app) { counterSeen = true; if c > count { count = c; registered = true; break } }
+                        Thread.sleep(forTimeInterval: 0.3)
+                    }
+                    if registered { break }
+                    if attempt == 0 { retried += 1; print("ODNOTE: tile tap not registered (\(l)); repeating once") }
+                }
+                if !registered && !counterSeen && done.isEmpty {
+                    // no counter visible at all: this tile was tapped twice (toggled off) -> tap once more and switch mode
+                    noCounter = true
+                    t.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.5)).tap(); Thread.sleep(forTimeInterval: 0.8)
+                    count += 1; done.insert(l); progressed = true
+                    print("ODNOTE: picker selected-count element not found; falling back to single taps")
+                    continue
+                }
+                if !registered { missed += 1 }
+                done.insert(l); progressed = true
             }
-            if tapped.count >= want { break }
+            if count >= want { break }
             idle = progressed ? 0 : idle + 1
             if idle >= 3 { break }
             app.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.72)).press(forDuration: 0.05, thenDragTo: app.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.5)), withVelocity: .slow, thenHoldForDuration: 0.4)
             Thread.sleep(forTimeInterval: 1.2)
         }
         shot("pick-selected-\(want)")
-        var confirmed = false
-        let addEnd = Date().addingTimeInterval(8)
-        while Date() < addEnd && !confirmed {
-            for b in [app.buttons["Add"], app.buttons["추가"], app.buttons["Done"]] where b.exists && b.isEnabled { b.tap(); confirmed = true; break }
+        dump("pick-selected-\(want)", app)
+        // confirm: labelled Add/Done, else the checkmark button in the picker's top bar right of the search field
+        var confirmed = false, how = "none"
+        let cEnd = Date().addingTimeInterval(10)
+        while Date() < cEnd && !confirmed {
+            for b in [app.buttons["Add"], app.buttons["Done"], app.buttons["추가"], app.buttons["완료"]] where b.exists && b.isEnabled && b.isHittable {
+                how = "label:" + b.label; b.tap(); confirmed = true; break
+            }
+            if !confirmed {
+                let sf = app.searchFields.firstMatch
+                if sf.exists {
+                    let sfr = sf.frame
+                    let btns = app.buttons.allElementsBoundByIndex.filter { $0.exists && abs($0.frame.midY - sfr.midY) < 40 && $0.frame.minX > sfr.maxX - 2 && $0.frame.width < 90 }
+                    if let b = btns.first, b.isEnabled {
+                        how = "topbar-right-of-search id='\(b.identifier)' label='\(b.label)'"
+                        b.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.5)).tap(); confirmed = true
+                    }
+                }
+            }
             if !confirmed { Thread.sleep(forTimeInterval: 0.5) }
         }
-        return (tapped.count, confirmed)
+        print("ODNOTE: picker want=\(want) pickerCount=\(count) counterSeen=\(counterSeen) retriedTaps=\(retried) missed=\(missed) confirm=\(how)")
+        record("pick-\(want)-selection", count == want && confirmed, "pickerCount\(noCounter ? "(assumed, no counter)" : "")=\(count) counterSeen=\(counterSeen) retriedTaps=\(retried) unregisteredTiles=\(missed) confirm=\(how)")
+        return (count, confirmed)
     }
 
     private func waitBatchEnd(_ app: XCUIApplication, timeout: TimeInterval) -> String? {
