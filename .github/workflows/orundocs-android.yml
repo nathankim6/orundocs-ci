@@ -20,7 +20,7 @@ concurrency:
   cancel-in-progress: false
 
 env:
-  SOURCE_SHA256: 1cc92ebdc58f123d0c832e879b75d2736cd39c7e8d5108d2325635efdca94640
+  SOURCE_SHA256: 58f81748275ef60bb7619188f3695bacf0eea5217723bc5fd8597733fadfabe5
 
 defaults:
   run:
@@ -205,13 +205,13 @@ jobs:
           cp emulator.log ci-output/emulator.log 2>/dev/null || true
           timeout 20 adb pull /sdcard/Android/data/com.orundocs.app/files/native-smoke ci-output/native-smoke || true
           timeout 10 adb logcat -d -s AtelierNativeSmoke:I '*:S' > ci-output/native-smoke-logcat.txt || true
-          timeout 10 adb logcat -d -t 1500 > ci-output/android-system-logcat.txt || true
           timeout 10 adb shell dumpsys webviewupdate > ci-output/webview-provider.txt || true
           cp app-signature.txt test-signature.txt release-badging.txt signed-manifest.json ci-output/ 2>/dev/null || true
           if [ "$(du -sm ci-output | cut -f1)" -ge 100 ]; then echo 'Evidence exceeds free-storage guard'; exit 1; fi
           node - <<'SANITIZE'
           const fs=require('fs'),path=require('path');
-          function walk(d){for(const e of fs.readdirSync(d,{withFileTypes:true})){const p=path.join(d,e.name);if(e.isDirectory())walk(p);else if(/\.(txt|log|json|xml)$/.test(p)){let s=fs.readFileSync(p,'utf8');s=s.replace(/eyJ[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+/g,'[REDACTED-JWT]').replace(/(rt=)[^&\s]+/g,'$1[REDACTED]');for(const v of [process.env.OD_REVIEW_PASSWORD,process.env.OD_REVIEW_EMAIL])if(v)s=s.split(v).join('[REDACTED]');fs.writeFileSync(p,s);}}}walk('ci-output');
+          const patterns=[/eyJ[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+/g,/AMf-v1[A-Za-z0-9_-]+/g,/(?:rt=|refresh_token["'\s:=]+|refreshToken["'\s:=]+)[^&\s"'<>]+/g,/sk-(?:proj-|svcacct-)?[A-Za-z0-9_-]{20,}/g];
+          function walk(d){for(const e of fs.readdirSync(d,{withFileTypes:true})){const p=path.join(d,e.name);if(e.isDirectory())walk(p);else if(/\.(txt|log|json|xml)$/.test(p)){let s=fs.readFileSync(p,'utf8');for(const r of patterns)s=s.replace(r,'[REDACTED]');fs.writeFileSync(p,s);for(const r of patterns){r.lastIndex=0;if(r.test(s))throw Error('Credential pattern remains');}}}}walk('ci-output');
           SANITIZE
           echo 'safe=true' >> "$GITHUB_OUTPUT"
       - name: Require actual native success marker
