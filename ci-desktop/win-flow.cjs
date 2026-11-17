@@ -8,8 +8,9 @@ const { spawn, spawnSync } = require('node:child_process');
 const { runE2E } = require('./e2e.cjs');
 
 const [setupExe, outDir, oldSetupExe] = process.argv.slice(2);
-const EXPECT = '4df27f3f01d7a5c5034f138997d9feab03c502a55c39573e56ad7b4f2f85fc6a';
-const EXPECT_OLD = '649b7fcb72741c7301b6e3478e2c70c819ed98a3c4e09da94d85fbcf8eaf9f36';
+const EXPECT = 'd2d017e4ab2e6487d304c8de2c58e4f69305bc8b9eac21c4d737bbc5d4adb452';
+const EXPECT_OLD = '4df27f3f01d7a5c5034f138997d9feab03c502a55c39573e56ad7b4f2f85fc6a';
+const VERSION = '4.1.0', OLD_VERSION = '4.0.0';
 const BRAND = '옳은PDF';
 const shots = path.join(outDir, 'shots');
 fs.mkdirSync(shots, { recursive: true });
@@ -70,7 +71,7 @@ async function diagnoseCleanup(target) {
 function listAll(dir) { const out = []; const walk = (d, rel) => { for (const e of fs.readdirSync(d, { withFileTypes: true })) { const r = rel ? rel + '/' + e.name : e.name; out.push(r + (e.isDirectory() ? '/' : '')); if (e.isDirectory()) walk(path.join(d, e.name), r); } }; try { walk(dir, ''); } catch (e) { out.push('error: ' + e.message); } return out; }
 let TARGET, EXE;
 async function doInstall(n, sp, opt = {}) {
-  const t0 = Date.now(); const sx = opt.setup || setupExe; const legacy = !!opt.legacy;
+  const t0 = Date.now(); const sx = opt.setup || setupExe; const legacy = !!opt.legacy; const wantV = opt.version || VERSION;
   const setup = spawn(sx, [], { stdio: 'ignore', cwd: path.dirname(sx) });
   setup.on('exit', c => L('setup exe exited', c));
   const c1 = await ui('click', { processNames: ['OrunDocs'], textRegex: '이 계정에 설치할까요', buttonRegexes: ['^설치$'], keys: '{ENTER}', timeoutSec: 300, shotBefore: path.join(shots, sp + '1-install-confirm.png'), shotAfter: path.join(shots, sp + '2-installing.png'), shotOnTimeout: path.join(shots, sp + '1-timeout.png'), progressShot: path.join(shots, sp + '0-sfx-extracting.png'), progressShotAfterSec: 4 });
@@ -84,7 +85,7 @@ async function doInstall(n, sp, opt = {}) {
   let info = null; try { info = JSON.parse(fs.readFileSync(path.join(TARGET, 'install-info.json'), 'utf8')); } catch {}
   const integ = ps(INTEGRATION); const files = fs.existsSync(TARGET) ? countFilesSafe(TARGET) : 0;
   const lnkSet = legacy ? integ.legacyShortcuts : integ.shortcuts, otherSet = legacy ? integ.shortcuts : integ.legacyShortcuts;
-  const ok = se === 0 && fs.existsSync(EXE) && info && info.version === '4.0.0' && info.files.length === files - 2 && integ.registry && integ.registry.DisplayVersion === '4.0.0' && integ.registry.DisplayName === (legacy ? 'OrunDocs' : BRAND) && Array.isArray(lnkSet) && lnkSet.every(x => x.exists && (x.target || '').toLowerCase() === EXE.toLowerCase()) && Array.isArray(otherSet) && otherSet.every(x => !x.exists);
+  const ok = se === 0 && fs.existsSync(EXE) && info && info.version === wantV && info.files.length === files - 2 && integ.registry && integ.registry.DisplayVersion === wantV && integ.registry.DisplayName === (legacy ? 'OrunDocs' : BRAND) && Array.isArray(lnkSet) && lnkSet.every(x => x.exists && (x.target || '').toLowerCase() === EXE.toLowerCase()) && Array.isArray(otherSet) && otherSet.every(x => !x.exists);
   step(n + 'c-setup-exit-and-installed', ok ? 'passed' : 'failed', { setupExit: se, seconds: Math.round((Date.now() - t0) / 1000), exe: fs.existsSync(EXE), filesOnDisk: files, installInfoFiles: info && info.files.length, registryVersion: integ.registry && integ.registry.DisplayVersion, registryDisplayName: integ.registry && integ.registry.DisplayName, legacyBuild: legacy, allAppLnks: integ.allAppLnks, legacyShortcuts: integ.legacyShortcuts, shortcuts: integ.shortcuts });
   return ok ? true : false;
 }
@@ -163,11 +164,11 @@ const HASHTEST = target => `$t=Get-Date; $ok=0;$err=0;$e1=$null; foreach($f in @
     step('0-sha256', h === EXPECT ? 'passed' : 'failed', `sha256=${h} size=${fs.statSync(setupExe).size} expected=${EXPECT}`);
     if (h !== EXPECT) throw Error('sha mismatch');
     const ho = crypto.createHash('sha256').update(fs.readFileSync(oldSetupExe)).digest('hex');
-    step('0-sha256-previous-build', ho === EXPECT_OLD ? 'passed' : 'failed', `previous OrunDocs build sha256=${ho} expected=${EXPECT_OLD}`);
+    step('0-sha256-previous-build', ho === EXPECT_OLD ? 'passed' : 'failed', `previous OrunPDF 4.0.0 release sha256=${ho} expected=${EXPECT_OLD}`);
     step('0-preconditions', fs.existsSync(target) ? 'failed' : 'passed', `install target pre-exists=${fs.existsSync(target)}; integration=${JSON.stringify(ps(INTEGRATION))}`);
 
     // U1. Install the PREVIOUS build (OrunDocs-named shortcuts), sign in once with it, close it.
-    if (!(await doInstall('U1', 'u0', { setup: oldSetupExe, legacy: true }))) throw Error('previous-build install failed');
+    if (!(await doInstall('U1', 'u0', { setup: oldSetupExe, legacy: false, version: OLD_VERSION }))) throw Error('previous-build install failed');
     const oldOut = path.join(outDir, 'previous-build-signin');
     const pre = await runE2E({ label: 'windows-previous-build', exe, unlockOnly: true, out: oldOut, fixtures: path.join(__dirname, 'fixtures'), port: 9334, saveMode: 'native' });
     step('U2-previous-build-signed-in', pre.checks['G2-real-account-unlock']?.status === 'passed' && pre.gracefulExit ? 'passed' : 'failed', { gate: pre.checks['G1-signin-gate-shown-workspace-hidden']?.status, login: pre.checks['G2-real-account-unlock']?.detail, gracefulExit: pre.gracefulExit }, ['previous-build-signin/shots/00b-signed-in.png']);
@@ -176,7 +177,7 @@ const HASHTEST = target => `$t=Get-Date; $ok=0;$err=0;$e1=$null; foreach($f in @
     // 1. Upgrade: run the NEW setup exe over the existing install (double-click equivalent)
     if (!(await doInstall('1', 'w0'))) throw Error('upgrade install failed');
     { const ig = ps(INTEGRATION);
-      step('U3-upgrade-removed-old-shortcuts', ig.legacyShortcuts.every(x => !x.exists) && ig.shortcuts.every(x => x.exists) && (ig.allAppLnks || []).length === 3 && ig.registry && ig.registry.DisplayName === BRAND ? 'passed' : 'failed', { allAppLnks: ig.allAppLnks, legacy: ig.legacyShortcuts.map(x => [x.path, x.exists]), current: ig.shortcuts.map(x => [x.path, x.exists, x.target]), registryDisplayName: ig.registry && ig.registry.DisplayName, userDataKept: fs.existsSync(path.join(process.env.APPDATA, 'OrunDocs')) }); }
+      step('U3-upgrade-in-place-shortcuts-registry-userdata', ig.legacyShortcuts.every(x => !x.exists) && ig.shortcuts.every(x => x.exists) && (ig.allAppLnks || []).length === 3 && ig.registry && ig.registry.DisplayName === BRAND && ig.registry.DisplayVersion === VERSION && fs.existsSync(path.join(process.env.APPDATA, 'OrunDocs')) ? 'passed' : 'failed', { registryDisplayVersion: ig.registry && ig.registry.DisplayVersion, allAppLnks: ig.allAppLnks, legacy: ig.legacyShortcuts.map(x => [x.path, x.exists]), current: ig.shortcuts.map(x => [x.path, x.exists, x.target]), registryDisplayName: ig.registry && ig.registry.DisplayName, userDataKept: fs.existsSync(path.join(process.env.APPDATA, 'OrunDocs')) }); }
 
     // 2. Verify installed files, shortcuts, uninstall registration
     let info = null; try { info = JSON.parse(fs.readFileSync(path.join(target, 'install-info.json'), 'utf8')); } catch (e) { L('install-info read', e.message); }
@@ -184,15 +185,26 @@ const HASHTEST = target => `$t=Get-Date; $ok=0;$err=0;$e1=$null; foreach($f in @
     S.installedIntegration = integ;
     const files = fs.existsSync(target) ? countFiles(target) : 0;
     const lnkOk = Array.isArray(integ.shortcuts) && integ.shortcuts.every(s => s.exists && s.target && s.target.toLowerCase() === exe.toLowerCase()) && /--uninstall/.test(integ.shortcuts[2].args || '');
-    const regOk = integ.registry && integ.registry.DisplayVersion === '4.0.0' && integ.registry.DisplayName === BRAND && /--uninstall/.test(integ.registry.UninstallString || '') && (integ.registry.InstallLocation || '').toLowerCase() === target.toLowerCase();
-    const filesOk = fs.existsSync(exe) && fs.existsSync(path.join(target, 'resources', 'app', 'desktop', 'main.cjs')) && info && info.version === '4.0.0' && info.files.length === files - 2;
+    const regOk = integ.registry && integ.registry.DisplayVersion === VERSION && integ.registry.DisplayName === BRAND && /--uninstall/.test(integ.registry.UninstallString || '') && (integ.registry.InstallLocation || '').toLowerCase() === target.toLowerCase();
+    const filesOk = fs.existsSync(exe) && fs.existsSync(path.join(target, 'resources', 'app', 'desktop', 'main.cjs')) && info && info.version === VERSION && info.files.length === files - 2;
     const unLnk = (integ.shortcuts || []).find(x => /옳은PDF 제거\.lnk$/.test(x.path || '')) || {};
     const unLnkWorkdirIsPrograms = (unLnk.workdir || '').replace(/\\+$/, '').toLowerCase() === path.dirname(target).toLowerCase();
     step('2-installed-files-shortcuts-registry', filesOk && lnkOk && regOk && unLnkWorkdirIsPrograms ? 'passed' : 'failed', { filesOk, lnkOk, regOk, uninstallShortcutWorkdir: unLnk.workdir, unLnkWorkdirIsPrograms, filesOnDisk: files, installInfo: info && { version: info.version, files: info.files.length, byteSize: info.byteSize, installId: info.installId, installedAt: info.installedAt }, registry: integ.registry, shortcuts: integ.shortcuts, pythonExe: fs.existsSync(path.join(target, 'resources', 'runtime', 'python-export', 'python.exe')) });
     save();
 
+    // 2b. Native Windows view of both binaries: version resources, Authenticode state, Mark-of-the-Web, shell icon.
+    { const q = s => String(s).replace(/'/g, "''");
+      const nat = ps("Add-Type -AssemblyName System.Drawing\n" +
+        "function Info($p){ $v=(Get-Item -LiteralPath $p).VersionInfo; $s=Get-AuthenticodeSignature -LiteralPath $p; $z=$null; try{ $z=((Get-Content -LiteralPath $p -Stream Zone.Identifier -ErrorAction Stop) -join ';') }catch{}; return @{fileVersion=$v.FileVersion;productVersion=$v.ProductVersion;productName=$v.ProductName;fileDescription=$v.FileDescription;companyName=$v.CompanyName;originalFilename=$v.OriginalFilename;signatureStatus=[string]$s.Status;signer=$(if($s.SignerCertificate){$s.SignerCertificate.Subject}else{$null});zoneIdentifier=$z} }\n" +
+        "function Ico($p,$o){ try{ $i=[System.Drawing.Icon]::ExtractAssociatedIcon($p); $b=$i.ToBitmap(); $b.Save($o,[System.Drawing.Imaging.ImageFormat]::Png); $r=@{png=$o;w=$b.Width;h=$b.Height}; $b.Dispose(); $i.Dispose(); return $r }catch{ return @{error=$_.Exception.Message} } }\n" +
+        "@{setup=(Info '" + q(setupExe) + "');app=(Info '" + q(exe) + "');setupIcon=(Ico '" + q(setupExe) + "' '" + q(path.join(shots, 'native-icon-setup.png')) + "');appIcon=(Ico '" + q(exe) + "' '" + q(path.join(shots, 'native-icon-app.png')) + "')} | ConvertTo-Json -Depth 5 -Compress");
+      const V4 = VERSION + '.0', a = nat.app || {}, s0 = nat.setup || {};
+      const okNative = a.fileVersion === V4 && a.productVersion === V4 && a.productName === BRAND && a.originalFilename === 'OrunDocs.exe' && s0.fileVersion === V4 && s0.productVersion === V4 && s0.productName === BRAND && a.signatureStatus === 'NotSigned' && s0.signatureStatus === 'NotSigned' && nat.appIcon && !nat.appIcon.error && nat.setupIcon && !nat.setupIcon.error;
+      step('2b-native-pe-version-unsigned-icon', okNative ? 'passed' : 'failed', { expectedVersion: V4, expectedSignature: 'NotSigned: the installer is deliberately unsigned. SmartScreen reputation is NOT exercised here (zoneIdentifier is null: gh release download adds no Mark-of-the-Web).', ...nat }, [nat.appIcon && nat.appIcon.png, nat.setupIcon && nat.setupIcon.png]);
+      const ds = await ui('shot', { path: path.join(shots, 'w0-desktop-after-install.png') }); L('desktop shot', ds && ds.ok); }
+
     // 3. Launch the installed app and run the E2E (native Save dialog driven via UIA)
-    const e2e = await runE2E({ label: 'windows-installed', exe, expectVersion: '4.0.0', productName: BRAND, expectBrand: BRAND, expectAutoUnlockFirst: true, out: outDir, fixtures: path.join(__dirname, 'fixtures'), port: 9333, saveMode: 'native',
+    const e2e = await runE2E({ label: 'windows-installed', exe, expectVersion: VERSION, aiChecks: true, productName: BRAND, expectBrand: BRAND, expectAutoUnlockFirst: true, out: outDir, fixtures: path.join(__dirname, 'fixtures'), port: 9333, saveMode: 'native',
       saveHandler: async ({ name, dest, shotPath, kind }) => {
         // For the split result keep the dialog's default name/location (what a user who just presses Save gets).
         const acceptDefault = kind === 'split-pdf';

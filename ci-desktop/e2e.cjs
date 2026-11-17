@@ -150,6 +150,7 @@ async function runE2E(o) {
     page.on('pageerror', e => R.events.pageErrors.push(String(e.message || e).slice(0, 400)));
     page.on('console', m => { if (m.type() === 'error') R.events.consoleErrors.push(m.text().slice(0, 400)); });
     page.on('download', d => R.events.playwrightDownloads.push(d.suggestedFilename()));
+    page.on('request', q => { try { const u = new URL(q.url()); if (u.pathname.startsWith('/api/exam-ai/')) (R.events.aiRequests = R.events.aiRequests || []).push({ method: q.method(), path: u.pathname, bearer: !!q.headers().authorization }); } catch {} });
   }
   async function stopApp() {
     try { if (page && !cdpHung) await withTimeout(page.close(), 15000, 'page.close'); } catch (e) { L('page.close', e.message); }
@@ -228,6 +229,19 @@ async function runE2E(o) {
     await page.waitForFunction(() => document.querySelectorAll('#tool-grid .tool-card').length > 0, null, { timeout: 30000 });
     L('hook', await ev(HOOK));
 
+    // ---- 4.1.0 A1: the packaged same-origin AI proxy is live and enforces its guards. None of these probes carries an
+    // Authorization header, so the proxy refuses each one BEFORE any upstream connection: no network, no paid call.
+    if (o.aiChecks) {
+      try {
+        const probe = await ev(async () => { const go = async (p, init) => { try { const r = await fetch(p, { cache: 'no-store', ...init }); let j = null; try { j = await r.json(); } catch {} return { status: r.status, error: j && j.error }; } catch (x) { return { fetchError: String(x && x.message || x) }; } };
+          return { statusNoHeader: await go('/api/exam-ai/status'), statusNoBearer: await go('/api/exam-ai/status', { headers: { 'X-OrunPDF-AI': '1' } }), statusWrongMethod: await go('/api/exam-ai/status', { method: 'POST', headers: { 'X-OrunPDF-AI': '1' } }), cleanupNoHeader: await go('/api/exam-ai/cleanup', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: '{}' }), cleanupNoBearer: await go('/api/exam-ai/cleanup', { method: 'POST', headers: { 'X-OrunPDF-AI': '1', 'Content-Type': 'application/json' }, body: '{}' }), unknownAiRoute: await go('/api/exam-ai/other', { headers: { 'X-OrunPDF-AI': '1' } }) }; });
+        R.ai = { ...(R.ai || {}), proxyProbe: probe };
+        const ok = probe.statusNoHeader.status === 403 && probe.statusNoBearer.status === 401 && probe.statusNoBearer.error === 'AI sign-in required' && probe.statusWrongMethod.status === 405 && probe.cleanupNoHeader.status === 403 && probe.cleanupNoBearer.status === 401 && probe.unknownAiRoute.status === 404;
+        setCheck('A1-ai-local-proxy-packaged-and-guarded', ok ? 'passed' : 'failed', JSON.stringify(probe));
+      } catch (x) { setCheck('A1-ai-local-proxy-packaged-and-guarded', 'failed', 'error: ' + x.message); }
+    }
+
+
     // ---- Check 1: window loads, footer 3.5.0, 32 tools
     try {
       await wait(1500);
@@ -261,17 +275,40 @@ async function runE2E(o) {
 
     // ---- Check 2: exam scan (handwriting removal) + save as PDF
     try {
-      await openCard('시험지 필기 지우기');
+      await home(); { let opened = false; for (const nm of ['사진 낙서 제거 → PDF']) { const b = page.getByRole('button', { name: nm + ' 도구 열기', exact: true }); if (await b.count()) { await b.click(); R.examCardTitle = nm; opened = true; break; } } if (!opened) throw Error('exam tool card not found'); }
       await page.waitForSelector('#exam-view:not([hidden])', { timeout: 20000 });
-      await page.locator('#exam-pick').setInputFiles(path.join(o.fixtures, 'exam-photo.jpg'));
+
+      // ---- 4.1.0: on-device processing must be the default; the GPT option is only inspected, never run.
+      { const eng = await ev(() => ({ hasEngine: !!document.getElementById('exam-engine-local'), local: document.getElementById('exam-engine-local')?.checked ?? null, ai: document.getElementById('exam-engine-ai')?.checked ?? null, aiDisabled: document.getElementById('exam-engine-ai')?.disabled ?? null, consent: document.getElementById('exam-ai-consent')?.checked ?? null, aiLabel: (document.getElementById('exam-engine-ai')?.closest('label')?.textContent || '').trim(), localLabel: (document.getElementById('exam-engine-local')?.closest('label')?.textContent || '').trim(), availability: (document.getElementById('exam-ai-availability')?.textContent || '').trim() }));
+        R.examEngineDefault = eng;
+        if (eng.hasEngine && !(eng.local === true && eng.ai === false && eng.consent === false)) throw Error('default engine is not on-device: ' + JSON.stringify(eng));
+        if (o.aiChecks) {
+          if (!eng.hasEngine) setCheck('A2-gpt-option-present-consent-gated-not-run', 'failed', 'engine radios missing: ' + JSON.stringify(eng));
+          else if (eng.aiDisabled) setCheck('A2-gpt-option-present-consent-gated-not-run', 'not-verified', 'GPT radio present but disabled in this session: ' + JSON.stringify(eng), [await shot('02x-gpt-option-disabled.png')]);
+          else try {
+            await page.locator('#exam-engine-ai').check({ timeout: 8000 }); await wait(500);
+            const ai = await ev(() => ({ aiChecked: document.getElementById('exam-engine-ai').checked, detailsHidden: document.getElementById('exam-ai-details')?.hidden ?? null, detailsText: (document.getElementById('exam-ai-details')?.innerText || '').replace(/\s+/g, ' ').trim().slice(0, 600), consentPresent: !!document.getElementById('exam-ai-consent'), consentChecked: document.getElementById('exam-ai-consent')?.checked ?? null, availability: (document.getElementById('exam-ai-availability')?.textContent || '').trim() }));
+            const sA = await shot('02x-gpt-option-consent-unchecked.png');
+            await page.locator('#exam-engine-local').check({ timeout: 8000 }); await wait(300);
+            const back = await ev(() => ({ local: document.getElementById('exam-engine-local').checked, ai: document.getElementById('exam-engine-ai').checked, consent: document.getElementById('exam-ai-consent').checked }));
+            R.ai = { ...(R.ai || {}), option: ai, afterSwitchBack: back };
+            setCheck('A2-gpt-option-present-consent-gated-not-run', ai.aiChecked && /GPT/.test(eng.aiLabel) && /운영자 API 비용 부담/.test(eng.aiLabel) && /운영자의 API 사용량이 차감/.test(ai.detailsText) && ai.consentPresent && ai.consentChecked === false && back.local === true && back.ai === false && back.consent === false ? 'passed' : 'failed', JSON.stringify({ labels: [eng.localLabel, eng.aiLabel], ai, back }), [sA]);
+          } catch (x) { setCheck('A2-gpt-option-present-consent-gated-not-run', 'failed', 'error: ' + x.message, [await shot('02x-gpt-option-error.png')]); }
+          await ev(() => { const l = document.getElementById('exam-engine-local'); if (l && !l.checked) l.click(); const c = document.getElementById('exam-ai-consent'); if (c && c.checked) c.click(); return true; }).catch(() => {});
+        }
+      }
+
+      const photoBytes = fs.readFileSync(path.join(o.fixtures, 'exam-photo.jpg')); await page.locator('#exam-pick').setInputFiles(Array.from({length:20}, (_,i)=>({name:'local-photo-'+String(i+1).padStart(2,'0')+'.jpg',mimeType:'image/jpeg',buffer:photoBytes})));
+      R.localPhotoInputCount = 20;
       await page.waitForFunction(() => (document.getElementById('exam-status')?.textContent || '').includes('확인한 뒤'), null, { timeout: 120000 });
       const st1 = await ev(() => document.getElementById('exam-status').textContent);
       const s1 = await shot('02a-exam-photo-detected.png');
+      { const pre = await ev(() => ({ local: document.getElementById('exam-engine-local')?.checked ?? null, ai: document.getElementById('exam-engine-ai')?.checked ?? null, consent: document.getElementById('exam-ai-consent')?.checked ?? null })); R.examEngineAtRun = pre; if (pre.ai === true || pre.consent === true) throw Error('refusing to run: GPT engine or consent is selected ' + JSON.stringify(pre)); }
       await page.locator('#exam-run').click();
-      await page.waitForFunction(() => { const s = document.getElementById('exam-status'); return s && ((s.textContent || '').includes('처리 완료') || s.classList.contains('is-error')); }, null, { timeout: 300000 });
+      await page.waitForFunction(() => { const s = document.getElementById('exam-status'); return s && (/처리 완료|처리가 끝났습니다/.test(s.textContent || '') || s.classList.contains('is-error')); }, null, { timeout: 300000 });
       const ex = await ev(() => { const s = document.getElementById('exam-status'), c = document.getElementById('exam-canvas'); let ink = null; try { const d = c.getContext('2d').getImageData(0, 0, c.width, c.height).data; let dark = 0; for (let i = 0; i < d.length; i += 16) if (d[i] + d[i + 1] + d[i + 2] < 300) dark++; ink = dark / (d.length / 16); } catch (e) { ink = String(e); } return { status: s.textContent, isError: s.classList.contains('is-error'), anyError: !!document.querySelector('#exam-view .is-error'), canvas: c ? { w: c.width, h: c.height } : null, darkFraction: ink }; });
       const s2 = await shot('02b-exam-processed.png');
-      const ok = ex.status.includes('처리 완료') && !ex.isError && !ex.anyError && ex.canvas && ex.canvas.w > 300;
+      const ok = /처리 완료|처리가 끝났습니다/.test(ex.status) && !ex.isError && !ex.anyError && ex.canvas && ex.canvas.w > 300;
       R.exam = { detectStatus: st1, ...ex };
       setCheck('2a-exam-process', ok ? 'passed' : 'failed', `detect status="${st1}"; run status="${ex.status}"; canvas=${JSON.stringify(ex.canvas)}; darkPixelFraction=${ex.darkFraction}; is-error=${ex.isError || ex.anyError}`, [s1, s2]);
       await page.fill('#exam-name', 'exam-e2e');
@@ -279,9 +316,24 @@ async function runE2E(o) {
       const sv = await doSave('#exam-save', 'exam-e2e.pdf', 'exam-pdf');
       let statusAfter = null; try { statusAfter = await ev(() => document.getElementById('exam-status').textContent, null, 15000); } catch {}
       const s3 = cdpHung ? null : await shot('02c-exam-after-save.png');
-      const okSave = sv.status === 'written' && sv.file.head.startsWith('%PDF') && sv.file.bytes > 1000;
+      let actualPages = null; if (sv.status === 'written') { const { PDFDocument } = require('pdf-lib'); actualPages = (await PDFDocument.load(fs.readFileSync(path.join(out, sv.dest)))).getPageCount(); } R.examPdfPages = actualPages; setCheck('2c-twenty-photos-twenty-pdf-pages', actualPages === 20 ? 'passed' : 'failed', JSON.stringify({inputPhotos:20,actualPdfPages:actualPages}));
+      const okSave = sv.status === 'written' && sv.file.head.startsWith('%PDF') && sv.file.bytes > 1000 && actualPages === 20;
       setCheck('2b-exam-save-pdf', okSave ? 'passed' : (sv.status === 'blocked' ? 'blocked' : 'failed'), `mode=${o.saveMode}; ${sv.status}; file=${JSON.stringify(sv.file || null)}; inPage=${JSON.stringify(sv.inPage)}; bytesMatchInPage=${sv.matchesInPageBytes}; status after="${statusAfter}"; handler=${JSON.stringify(sv.handler || null)}`, [s3, sv.handler && sv.handler.shot, sv.status === 'written' ? sv.dest : null]);
     } catch (e) { setCheck(R.checks['2a-exam-process'] ? '2b-exam-save-pdf' : '2a-exam-process', 'failed', 'error: ' + e.message, [await shot('02-exam-error.png')]); }
+
+    // Authenticated UI status probe, then CANCEL the native consent confirmation: never submits cleanup.
+    if (o.aiChecks) { let confirmation = null, reply = null;
+      const cancel = async d => { confirmation = { type:d.type(), mentions20:/20/.test(d.message()), mentionsBudget:/18|20/.test(d.message()) }; await d.dismiss(); };
+      page.on('dialog', cancel);
+      try {
+        await page.locator('#exam-engine-ai').check(); await page.locator('#exam-ai-consent').check();
+        const response = page.waitForResponse(r => new URL(r.url()).pathname === '/api/exam-ai/status', {timeout:30000});
+        await page.locator('#exam-run').click(); const r = await response; const j = await r.json(); reply = {status:r.status(),allowed:j.allowed,spentUSD:j.spentUSD,remainingUSD:j.remainingUSD};
+        await page.waitForFunction(()=>/AI 전송을 취소했습니다/.test(document.getElementById('exam-status').textContent),null,{timeout:15000});
+        setCheck('A4-real-auth-status-and-consent-cancel',reply.status===200 && reply.allowed===true && confirmation?.type==='confirm' ? 'passed':'failed',JSON.stringify({reply,confirmation}),[await shot('02y-ai-confirmation-cancelled.png')]);
+      } catch(x) {setCheck('A4-real-auth-status-and-consent-cancel','failed',JSON.stringify({error:x.message,reply,confirmation}));}
+      finally {page.off('dialog',cancel);await page.locator('#exam-engine-local').check().catch(()=>{});await page.locator('#exam-ai-consent').uncheck().catch(()=>{});}
+    }
 
     // ---- Check 3: PDF split with preview of the 6-page PDF + save one result
     try {
@@ -331,6 +383,9 @@ async function runE2E(o) {
         setCheck('4b-word-save-docx', okSave ? 'passed' : (sv.status === 'blocked' ? 'blocked' : 'failed'), `mode=${o.saveMode}; ${sv.status}; file=${JSON.stringify(sv.file || null)}; bytesMatchInPage=${sv.matchesInPageBytes}; document.xml text="${docText}"; handler=${JSON.stringify(sv.handler || null)}`, [sv.handler && sv.handler.shot, sv.status === 'written' ? sv.dest : null]);
       }
     } catch (e) { setCheck(R.checks['4a-pdf-to-word-python'] ? '4b-word-save-docx' : '4a-pdf-to-word-python', cdpHung ? 'blocked' : 'failed', 'error: ' + e.message, cdpHung ? [] : [await shot('04-word-error.png')]); }
+
+    // ---- 4.1.0 A3: nothing that the AI proxy could forward (a request with a bearer token) was sent during the whole run
+    if (o.aiChecks) { const all = R.events.aiRequests || [], fw = all.filter(x => x.bearer && x.path === '/api/exam-ai/cleanup'); setCheck('A3-no-paid-cleanup-request-sent', fw.length === 0 ? 'passed' : 'failed', JSON.stringify({ aiProxyRequests: all, withBearer: fw.length, engineAtRun: R.examEngineAtRun || null })); }
 
     // ---- Check 5: no renderer crash, page still responsive
     try {

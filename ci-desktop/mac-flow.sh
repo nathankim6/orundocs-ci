@@ -3,7 +3,7 @@
 # Usage: mac-flow.sh <zip> <evidence-dir> <dmg-out-dir>
 set -u
 ZIP="$1"; OUT="$2"; DMGDIR="$3"
-EXPECT=4fa61518a5d12c0a3997b286d69c0dc3852837c6964aefd9fb57add2b28a992d
+EXPECT=de4ddf86fe102c9612705d1ce8e891ba9d6ad592e87216d5bcb48d41f88e9d06
 HERE="$(cd "$(dirname "$0")" && pwd)"
 mkdir -p "$OUT/shots" "$DMGDIR"
 LOG="$OUT/mac-flow-log.txt"; : > "$LOG"
@@ -56,10 +56,10 @@ pkill -f "Contents/MacOS/OrunDocs" 2>/dev/null
 D="$W/dmgsrc"; rm -rf "$D"; mkdir -p "$D"
 ditto "$APP" "$D/$APPNAME"
 ln -s /Applications "$D/Applications"
-DMG="$DMGDIR/OrunPDF-4.0.0-mac-arm64.dmg"
+DMG="$DMGDIR/OrunPDF-4.1.0-mac-arm64.dmg"
 run hdiutil create -volname "옳은PDF" -srcfolder "$D" -ov -format UDZO "$DMG"; rc=$?
 [ $rc -eq 0 ] && step 5a-dmg-create passed "$(shasum -a 256 "$DMG" | awk '{print $1}') $(stat -f %z "$DMG") bytes" || step 5a-dmg-create failed "rc=$rc"
-shasum -a 256 "$DMG" | tee "$DMGDIR/OrunPDF-4.0.0-mac-arm64.dmg.sha256" > "$OUT/dmg.sha256"
+shasum -a 256 "$DMG" | tee "$DMGDIR/OrunPDF-4.1.0-mac-arm64.dmg.sha256" > "$OUT/dmg.sha256"
 run hdiutil imageinfo "$DMG"
 MNT="$W/mnt"; mkdir -p "$MNT"
 run hdiutil attach -nobrowse -readonly -mountpoint "$MNT" "$DMG"; rc=$?
